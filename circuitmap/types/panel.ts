@@ -1,0 +1,74 @@
+export interface Panel {
+  id: string;
+  userId: string;
+  name: string;
+  address?: string;
+  brand: string;
+  mainAmperage: number;
+  totalSlots: number;
+  columns: number;
+  notes?: string;
+  coverPhotoUrl?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface Breaker {
+  id: string;
+  panelId: string;
+  position: string;
+  amperage: number;
+  poles: number;
+  label: string;
+  circuitType: string;
+  protectionType: string;
+  isOn: boolean;
+  notes?: string;
+  sortOrder?: number;
+  createdAt: Date;
+}
+
+export interface Floor {
+  id: string;
+  panelId: string;
+  name: string;
+  level: number;
+  floorPlanData?: any;
+  createdAt: Date;
+}
+
+export interface Room {
+  id: string;
+  floorId: string;
+  name: string;
+  positionX?: number;
+  positionY?: number;
+  width?: number;
+  height?: number;
+  createdAt: Date;
+}
+
+export interface Device {
+  id: string;
+  roomId: string;
+  breakerId?: string;
+  type: string;
+  subtype?: string;
+  description: string;
+  positionX?: number;
+  positionY?: number;
+  estimatedWattage?: number;
+  isGfciProtected: boolean;
+  notes?: string;
+  photoUrl?: string;
+  createdAt: Date;
+}
+
+export interface PanelWithRelations extends Panel {
+  breakers: Breaker[];
+  floors: (Floor & {
+    rooms: (Room & {
+      devices: Device[];
+    })[];
+  })[];
+}

@@ -8,6 +8,7 @@ import { useFloorPlanStore } from '@/stores/floorPlanStore'
 import { FloorPlanToolbar } from './FloorPlanToolbar'
 import { useUpdateRoom } from '@/hooks/useRooms'
 import { useUpdateDevice } from '@/hooks/useDevices'
+import { useWalls, useCreateManyWalls, useUpdateWall, useDeleteWall } from '@/hooks/useWalls'
 import { Home, MapPin } from 'lucide-react'
 
 // Dynamic import for Konva (SSR incompatible)
@@ -40,14 +41,23 @@ export function FloorPlanEditor({ floors, breakers, panelId }: FloorPlanEditorPr
 
   const updateRoom = useUpdateRoom()
   const updateDevice = useUpdateDevice()
+  const createManyWalls = useCreateManyWalls()
+  const updateWall = useUpdateWall()
+  const deleteWall = useDeleteWall()
 
   const {
     selectedFloorId,
     setSelectedFloorId,
     pendingRoomUpdates,
     pendingDeviceUpdates,
+    pendingWallCreations,
+    pendingWallUpdates,
+    pendingWallDeletions,
     markSaved,
   } = useFloorPlanStore()
+
+  // Fetch walls for selected floor
+  const { data: walls = [] } = useWalls(selectedFloorId ?? undefined)
 
   // Set initial floor
   useEffect(() => {
@@ -108,7 +118,53 @@ export function FloorPlanEditor({ floors, breakers, panelId }: FloorPlanEditorPr
         })
       )
 
-      await Promise.all([...roomUpdatePromises, ...deviceUpdatePromises])
+      // Save new walls (batch create)
+      let wallCreatePromise: Promise<unknown> = Promise.resolve()
+      if (pendingWallCreations.length > 0) {
+        wallCreatePromise = createManyWalls.mutateAsync({
+          walls: pendingWallCreations.map((w) => ({
+            floorId: w.floorId,
+            startX: w.startX,
+            startY: w.startY,
+            endX: w.endX,
+            endY: w.endY,
+            thickness: w.thickness,
+            isExterior: w.isExterior,
+          })),
+          panelId,
+        })
+      }
+
+      // Save wall updates
+      const wallUpdatePromises = Object.entries(pendingWallUpdates).map(([wallId, updates]) => {
+        const wall = walls.find((w) => w.id === wallId)
+        if (!wall) return Promise.resolve()
+        return updateWall.mutateAsync({
+          id: wallId,
+          floorId: wall.floorId,
+          panelId,
+          data: updates,
+        })
+      })
+
+      // Delete walls
+      const wallDeletePromises = pendingWallDeletions.map((wallId) => {
+        const wall = walls.find((w) => w.id === wallId)
+        if (!wall) return Promise.resolve()
+        return deleteWall.mutateAsync({
+          id: wallId,
+          floorId: wall.floorId,
+          panelId,
+        })
+      })
+
+      await Promise.all([
+        ...roomUpdatePromises,
+        ...deviceUpdatePromises,
+        wallCreatePromise,
+        ...wallUpdatePromises,
+        ...wallDeletePromises,
+      ])
       markSaved()
     } catch (error) {
       console.error('Failed to save floor plan:', error)
@@ -171,6 +227,7 @@ export function FloorPlanEditor({ floors, breakers, panelId }: FloorPlanEditorPr
               <FloorPlanCanvas
                 floor={selectedFloor}
                 breakers={breakers}
+                walls={walls}
                 width={canvasSize.width}
                 height={canvasSize.height}
               />

@@ -1,13 +1,42 @@
 'use client'
 
+import { useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { User, Mail, Crown, Calendar } from 'lucide-react'
+import { User, Mail, Crown, Loader2, ExternalLink } from 'lucide-react'
+
+const TIER_NAMES: Record<string, string> = {
+  free: 'Free',
+  pro: 'Pro',
+  premium: 'Premium',
+}
 
 export default function SettingsPage() {
   const { data: session } = useSession()
+  const [isManaging, setIsManaging] = useState(false)
+
+  const currentTier = (session?.user as { subscriptionTier?: string })?.subscriptionTier || 'free'
+
+  const handleManageSubscription = async () => {
+    setIsManaging(true)
+    try {
+      const response = await fetch('/api/stripe/portal', {
+        method: 'POST',
+      })
+      const data = await response.json()
+      if (data.url) {
+        window.location.href = data.url
+      } else {
+        console.error('No portal URL returned')
+      }
+    } catch (error) {
+      console.error('Portal error:', error)
+    } finally {
+      setIsManaging(false)
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -57,17 +86,38 @@ export default function SettingsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium">Current Plan</p>
-                <Badge variant="secondary" className="mt-1">
-                  Pro
+                <Badge variant={currentTier === 'free' ? 'secondary' : 'default'} className="mt-1">
+                  {TIER_NAMES[currentTier] || 'Free'}
                 </Badge>
               </div>
-              <Button variant="outline" disabled>
-                Manage
-              </Button>
+              {currentTier !== 'free' && (
+                <Button
+                  variant="outline"
+                  onClick={handleManageSubscription}
+                  disabled={isManaging}
+                >
+                  {isManaging ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                  )}
+                  Manage
+                </Button>
+              )}
             </div>
-            <p className="text-sm text-muted-foreground">
-              Subscription management coming soon. Contact support for changes.
-            </p>
+            {currentTier === 'free' ? (
+              <p className="text-sm text-muted-foreground">
+                Upgrade to Pro or Premium for more features. Visit the{' '}
+                <a href="/dashboard/billing" className="underline hover:text-foreground">
+                  billing page
+                </a>{' '}
+                to upgrade.
+              </p>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Click Manage to update payment methods, view invoices, or cancel your subscription.
+              </p>
+            )}
           </CardContent>
         </Card>
 

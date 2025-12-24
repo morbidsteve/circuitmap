@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -93,12 +93,12 @@ export default function AdminPage() {
     }
   }, [status, isAdmin, router]);
 
-  const fetchUsers = async (page = 1, searchTerm = '') => {
+  const fetchUsers = useCallback(async (page = 1, searchTerm = '') => {
     setIsLoading(true);
     try {
       const params = new URLSearchParams({
         page: page.toString(),
-        limit: pagination.limit.toString(),
+        limit: '20',
       });
       if (searchTerm) {
         params.set('search', searchTerm);
@@ -115,7 +115,7 @@ export default function AdminPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   const fetchUserDetails = async (userId: string) => {
     try {
@@ -156,7 +156,7 @@ export default function AdminPage() {
     if (isAdmin) {
       fetchUsers();
     }
-  }, [isAdmin]);
+  }, [isAdmin, fetchUsers]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();

@@ -23,6 +23,7 @@ import {
   Monitor,
   Refrigerator,
   Trash2,
+  Scissors,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -32,6 +33,12 @@ interface CircuitViewProps {
   onDeviceClick?: (device: Device, roomId: string) => void
   onAddDevice?: (breakerId: string) => void
   onDeleteBreaker?: (breaker: Breaker) => void
+  onSplitBreaker?: (breaker: Breaker) => void
+}
+
+// Check if position is combined tandem format (e.g., "14A/14B")
+function isCombinedTandem(position: string): boolean {
+  return /^\d+[AB]\/\d+[AB]$/i.test(position)
 }
 
 // Get icon for device type
@@ -104,7 +111,7 @@ interface BreakerWithDevices {
   totalWattage: number
 }
 
-export function CircuitView({ panel, onBreakerClick, onDeviceClick, onAddDevice, onDeleteBreaker }: CircuitViewProps) {
+export function CircuitView({ panel, onBreakerClick, onDeviceClick, onAddDevice, onDeleteBreaker, onSplitBreaker }: CircuitViewProps) {
   const [expandedBreakers, setExpandedBreakers] = useState<Set<string>>(new Set())
 
   // Build a map of breaker -> devices grouped by room
@@ -243,6 +250,20 @@ export function CircuitView({ panel, onBreakerClick, onDeviceClick, onAddDevice,
 
               {/* Action Buttons */}
               <div className="flex items-center gap-1">
+                {isCombinedTandem(breaker.position) && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onSplitBreaker?.(breaker)
+                    }}
+                    title="Split tandem into two breakers"
+                  >
+                    <Scissors className="h-4 w-4" />
+                  </Button>
+                )}
                 <Button
                   variant="ghost"
                   size="sm"

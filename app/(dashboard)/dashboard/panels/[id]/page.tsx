@@ -35,7 +35,7 @@ import { RoomForm } from '@/components/forms/RoomForm'
 import { DeviceForm } from '@/components/forms/DeviceForm'
 import { DeviceFormWithRoomSelect } from '@/components/forms/DeviceFormWithRoomSelect'
 import { usePanel, useUpdatePanel, useDeletePanel } from '@/hooks/usePanels'
-import { useCreateBreaker, useUpdateBreaker, useDeleteBreaker } from '@/hooks/useBreakers'
+import { useCreateBreaker, useUpdateBreaker, useDeleteBreaker, useSplitTandemBreaker } from '@/hooks/useBreakers'
 import { useCreateFloor, useUpdateFloor, useDeleteFloor } from '@/hooks/useFloors'
 import { useCreateRoom, useUpdateRoom, useDeleteRoom } from '@/hooks/useRooms'
 import { useCreateDevice, useUpdateDevice, useDeleteDevice } from '@/hooks/useDevices'
@@ -56,6 +56,7 @@ import {
   List,
   Map,
   Download,
+  Scissors,
 } from 'lucide-react'
 import {
   DropdownMenu,
@@ -94,6 +95,7 @@ export default function PanelDetailPage() {
   const createBreaker = useCreateBreaker()
   const updateBreaker = useUpdateBreaker()
   const deleteBreaker = useDeleteBreaker()
+  const splitTandemBreaker = useSplitTandemBreaker()
   const createFloor = useCreateFloor()
   const updateFloor = useUpdateFloor()
   const deleteFloor = useDeleteFloor()
@@ -353,6 +355,34 @@ export default function PanelDetailPage() {
                         <Badge variant="outline">{selectedBreaker.protectionType}</Badge>
                       </div>
 
+                      {/* Split Tandem Button - only show for combined format like "14A/14B" */}
+                      {/^\d+[AB]\/\d+[AB]$/i.test(selectedBreaker.position) && (
+                        <div className="p-3 bg-amber-50 border border-amber-200 rounded-md">
+                          <div className="text-sm text-amber-800 mb-2">
+                            This is a combined tandem breaker. Split it to add devices to each half separately.
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="border-amber-300 text-amber-700 hover:bg-amber-100"
+                            onClick={() => {
+                              splitTandemBreaker.mutate(
+                                { id: selectedBreaker.id, panelId: panel.id },
+                                {
+                                  onSuccess: () => {
+                                    setSelectedBreakerId(undefined)
+                                  },
+                                }
+                              )
+                            }}
+                            disabled={splitTandemBreaker.isPending}
+                          >
+                            <Scissors className="h-4 w-4 mr-2" />
+                            {splitTandemBreaker.isPending ? 'Splitting...' : 'Split into Two Breakers'}
+                          </Button>
+                        </div>
+                      )}
+
                       <div className="border-t pt-4">
                         <div className="flex items-center justify-between mb-3">
                           <div className="text-sm font-medium">
@@ -571,6 +601,9 @@ export default function PanelDetailPage() {
               }
               onDeleteBreaker={(breaker) =>
                 setModalState({ type: 'deleteBreaker', breaker })
+              }
+              onSplitBreaker={(breaker) =>
+                splitTandemBreaker.mutate({ id: breaker.id, panelId: panel.id })
               }
             />
           </div>

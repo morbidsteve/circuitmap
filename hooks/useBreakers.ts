@@ -95,3 +95,23 @@ export function useDeleteBreaker() {
     },
   });
 }
+
+// Split a combined tandem breaker (e.g., "14A/14B") into two separate breakers
+export function useSplitTandemBreaker() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, panelId }: { id: string; panelId: string }) => {
+      const res = await fetch(`/api/breakers/${id}/split`, { method: 'POST' });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Failed to split breaker');
+      }
+      return res.json() as Promise<{ message: string; breakers: Breaker[] }>;
+    },
+    onSuccess: (_, { panelId }) => {
+      queryClient.invalidateQueries({ queryKey: ['panels'] });
+      queryClient.invalidateQueries({ queryKey: ['panels', panelId] });
+    },
+  });
+}

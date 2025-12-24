@@ -397,6 +397,75 @@ export function TandemBreakerSlot({
     return suffixA.localeCompare(suffixB);
   });
 
+  // Determine which slots (A and/or B) are occupied
+  const hasA = sortedBreakers.some(b => /[Aa]$/.test(b.position));
+  const hasB = sortedBreakers.some(b => /[Bb]$/.test(b.position));
+  const breakerA = sortedBreakers.find(b => /[Aa]$/.test(b.position));
+  const breakerB = sortedBreakers.find(b => /[Bb]$/.test(b.position));
+
+  const renderBreakerHalf = (breaker: Breaker | undefined, suffix: 'A' | 'B') => {
+    if (!breaker) {
+      // Empty tandem half-slot
+      return (
+        <div
+          key={`empty-${suffix}`}
+          className={cn(
+            "h-[22px] rounded border-2 border-dashed border-gray-300/50 bg-gray-600/30",
+            "flex items-center justify-center text-[9px] text-gray-300/70"
+          )}
+        >
+          <span className="font-mono">{position}{suffix}</span>
+        </div>
+      );
+    }
+
+    const isSelected = breaker.id === selectedBreakerId;
+    const circuitColor = getCircuitTypeColor(breaker.circuitType);
+
+    return (
+      <div
+        key={breaker.id}
+        className={cn(
+          "relative h-[22px] rounded shadow-sm cursor-pointer",
+          "border flex items-center px-1.5 gap-1",
+          side === 'right' && 'flex-row-reverse',
+          isSelected
+            ? 'border-primary ring-1 ring-primary bg-primary/20'
+            : 'border-gray-600 bg-gradient-to-b from-gray-200 to-gray-300',
+          breaker.isOn
+            ? 'from-gray-200 to-gray-300'
+            : 'from-gray-400 to-gray-500 opacity-70'
+        )}
+        onClick={() => onBreakerClick?.(breaker.id)}
+      >
+        {/* Circuit type color bar */}
+        <div
+          className={cn(
+            "absolute top-0 w-1 h-full rounded-sm",
+            side === 'left' ? 'left-0 rounded-l' : 'right-0 rounded-r',
+            circuitColor
+          )}
+        />
+
+        {/* Amperage */}
+        <span className="text-xs font-bold text-gray-800 ml-1">{breaker.amperage}A</span>
+
+        {/* Label (truncated) */}
+        <span className={cn(
+          "flex-1 text-[9px] text-gray-700 truncate",
+          side === 'right' ? 'text-right mr-1' : 'text-left'
+        )}>
+          {breaker.label}
+        </span>
+
+        {/* Position suffix */}
+        <span className="text-[8px] text-gray-500 font-mono">
+          {breaker.position.slice(-1).toUpperCase()}
+        </span>
+      </div>
+    );
+  };
+
   return (
     <div className={cn(
       "h-12 mb-1 flex items-center",
@@ -413,53 +482,8 @@ export function TandemBreakerSlot({
 
       {/* Tandem breaker body - split into two halves */}
       <div className="flex-1 mx-1 flex flex-col gap-0.5">
-        {sortedBreakers.map((breaker, idx) => {
-          const isSelected = breaker.id === selectedBreakerId;
-          const circuitColor = getCircuitTypeColor(breaker.circuitType);
-
-          return (
-            <div
-              key={breaker.id}
-              className={cn(
-                "relative h-[22px] rounded shadow-sm cursor-pointer",
-                "border flex items-center px-1.5 gap-1",
-                side === 'right' && 'flex-row-reverse',
-                isSelected
-                  ? 'border-primary ring-1 ring-primary bg-primary/20'
-                  : 'border-gray-600 bg-gradient-to-b from-gray-200 to-gray-300',
-                breaker.isOn
-                  ? 'from-gray-200 to-gray-300'
-                  : 'from-gray-400 to-gray-500 opacity-70'
-              )}
-              onClick={() => onBreakerClick?.(breaker.id)}
-            >
-              {/* Circuit type color bar */}
-              <div
-                className={cn(
-                  "absolute top-0 w-1 h-full rounded-sm",
-                  side === 'left' ? 'left-0 rounded-l' : 'right-0 rounded-r',
-                  circuitColor
-                )}
-              />
-
-              {/* Amperage */}
-              <span className="text-xs font-bold text-gray-800 ml-1">{breaker.amperage}A</span>
-
-              {/* Label (truncated) */}
-              <span className={cn(
-                "flex-1 text-[9px] text-gray-700 truncate",
-                side === 'right' ? 'text-right mr-1' : 'text-left'
-              )}>
-                {breaker.label}
-              </span>
-
-              {/* Position suffix */}
-              <span className="text-[8px] text-gray-500 font-mono">
-                {breaker.position.slice(-1).toUpperCase()}
-              </span>
-            </div>
-          );
-        })}
+        {renderBreakerHalf(breakerA, 'A')}
+        {renderBreakerHalf(breakerB, 'B')}
       </div>
     </div>
   );

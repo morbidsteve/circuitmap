@@ -11,6 +11,18 @@ export default withAuth(
       return NextResponse.redirect(new URL('/dashboard', req.url))
     }
 
+    // Redirect authenticated users from home page to dashboard
+    if (token && pathname === '/') {
+      return NextResponse.redirect(new URL('/dashboard', req.url))
+    }
+
+    // Protect admin routes - require isAdmin
+    if (pathname.startsWith('/dashboard/admin')) {
+      if (!token?.isAdmin) {
+        return NextResponse.redirect(new URL('/dashboard', req.url))
+      }
+    }
+
     return NextResponse.next()
   },
   {
@@ -20,6 +32,11 @@ export default withAuth(
 
         // Allow auth pages without token
         if (pathname.startsWith('/auth')) {
+          return true
+        }
+
+        // Allow home page without token (redirect handled in middleware)
+        if (pathname === '/') {
           return true
         }
 
@@ -36,5 +53,5 @@ export default withAuth(
 )
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/auth/:path*'],
+  matcher: ['/dashboard/:path*', '/auth/:path*', '/'],
 }

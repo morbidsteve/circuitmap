@@ -7,7 +7,7 @@ import { z } from 'zod';
 export const dynamic = 'force-dynamic';
 
 const updateBreakerSchema = z.object({
-  position: z.string().min(1).optional(),
+  position: z.string().min(1).transform(s => s.trim().toUpperCase()).optional(),
   amperage: z.number().int().positive().optional(),
   poles: z.number().int().min(1).max(3).optional(),
   label: z.string().min(1).optional(),

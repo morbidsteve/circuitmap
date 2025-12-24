@@ -112,13 +112,14 @@ export function PanelView({
     let rightSlot: SlotContent = breakerMap.get(rightPos.toString());
 
     // Check for tandem breakers (e.g., "1A", "1B" for slot 1)
+    // Always render as array so TandemBreakerSlot is used (even for single tandem)
     if (!leftSlot && tandemGroups.has(leftPos)) {
       const tandems = tandemGroups.get(leftPos)!;
-      leftSlot = tandems.length === 1 ? tandems[0] : tandems;
+      leftSlot = tandems; // Always use array for tandem display
     }
     if (!rightSlot && tandemGroups.has(rightPos)) {
       const tandems = tandemGroups.get(rightPos)!;
-      rightSlot = tandems.length === 1 ? tandems[0] : tandems;
+      rightSlot = tandems; // Always use array for tandem display
     }
 
     // Check for range positions like "1-3" or "2-4" that START at this position

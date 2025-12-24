@@ -45,17 +45,15 @@ export function FloorForm({ floor, panelId, onSubmit, onCancel, isLoading }: Flo
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="level">Level</Label>
+        <Label htmlFor="level">Level (for ordering)</Label>
         <Input
           id="level"
           type="number"
           value={level}
-          onChange={(e) => setLevel(parseInt(e.target.value) || 1)}
-          min={-2}
-          max={10}
+          onChange={(e) => setLevel(parseInt(e.target.value) || 0)}
         />
         <p className="text-xs text-muted-foreground">
-          Use negative numbers for basement levels (e.g., -1 for basement)
+          Use 0 for ground floor, negative for basement (-1, -2), positive for upper floors (1, 2, 3)
         </p>
       </div>
 

@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 
 const createBreakerSchema = z.object({
   panelId: z.string().uuid(),
-  position: z.string().min(1),
+  position: z.string().min(1).transform(s => s.trim().toUpperCase()),
   amperage: z.number().int().positive(),
   poles: z.number().int().min(1).max(3).default(1),
   label: z.string().min(1),

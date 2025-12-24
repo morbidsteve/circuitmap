@@ -21,6 +21,7 @@ model User {
   avatarUrl         String?
   subscriptionTier  String    @default("free") // free, pro, premium
   stripeCustomerId  String?   @unique
+  isAdmin           Boolean   @default(false)
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 

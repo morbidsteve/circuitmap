@@ -43,6 +43,7 @@ export const authOptions: NextAuthOptions = {
           name: user.fullName,
           image: user.avatarUrl,
           subscriptionTier: user.subscriptionTier,
+          isAdmin: user.isAdmin,
         };
       },
     }),
@@ -60,15 +61,17 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.id = user.id;
         token.subscriptionTier = (user as { subscriptionTier?: string }).subscriptionTier || 'free';
+        token.isAdmin = (user as { isAdmin?: boolean }).isAdmin || false;
       }
       // Refresh subscription tier on session update
       if (trigger === 'update') {
         const dbUser = await prisma.user.findUnique({
           where: { id: token.id as string },
-          select: { subscriptionTier: true },
+          select: { subscriptionTier: true, isAdmin: true },
         });
         if (dbUser) {
           token.subscriptionTier = dbUser.subscriptionTier;
+          token.isAdmin = dbUser.isAdmin;
         }
       }
       return token;
@@ -77,6 +80,7 @@ export const authOptions: NextAuthOptions = {
       if (session?.user) {
         session.user.id = token.id as string;
         session.user.subscriptionTier = token.subscriptionTier as string;
+        session.user.isAdmin = token.isAdmin as boolean;
       }
       return session;
     },

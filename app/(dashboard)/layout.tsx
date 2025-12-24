@@ -14,6 +14,7 @@ import {
   X,
   ChevronRight,
   CreditCard,
+  Shield,
 } from 'lucide-react'
 import { useState } from 'react'
 
@@ -21,6 +22,10 @@ const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Billing', href: '/dashboard/billing', icon: CreditCard },
   { name: 'Settings', href: '/dashboard/settings', icon: Settings },
+]
+
+const adminNavigation = [
+  { name: 'Admin', href: '/dashboard/admin', icon: Shield },
 ]
 
 export default function DashboardLayout({
@@ -85,6 +90,36 @@ export default function DashboardLayout({
                 </Link>
               )
             })}
+
+            {/* Admin navigation - only visible for admins */}
+            {(session?.user as { isAdmin?: boolean })?.isAdmin && (
+              <>
+                <div className="pt-4 pb-2">
+                  <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3">
+                    Admin
+                  </div>
+                </div>
+                {adminNavigation.map((item) => {
+                  const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
+                  return (
+                    <Link
+                      key={item.name}
+                      href={item.href}
+                      className={cn(
+                        'flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors',
+                        isActive
+                          ? 'bg-primary/10 text-primary'
+                          : 'text-gray-700 hover:bg-gray-100'
+                      )}
+                      onClick={() => setSidebarOpen(false)}
+                    >
+                      <item.icon className="h-5 w-5" />
+                      {item.name}
+                    </Link>
+                  )
+                })}
+              </>
+            )}
           </nav>
 
           {/* User section */}

@@ -39,15 +39,14 @@ export default function DemoPage() {
 
   const fetchPanel = useCallback(async () => {
     try {
-      console.log('Fetching panels...');
-      const res = await fetch('/api/panels');
-      console.log('Response status:', res.status);
-      const data = await res.json();
-      console.log('Panels received:', data.length);
-      if (data.length > 0) {
-        setPanel(data[0]);
+      // Fetch the demo panel - this endpoint always returns the demo data
+      // regardless of authentication status
+      const res = await fetch('/api/demo/panel');
+      if (res.ok) {
+        const data = await res.json();
+        setPanel(data);
       } else {
-        console.log('No panels in response');
+        console.log('Demo panel not found');
       }
     } catch (err) {
       console.error('Error loading panel:', err);

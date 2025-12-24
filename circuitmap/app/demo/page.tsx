@@ -1,30 +1,150 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { PanelView } from '@/components/panel/PanelView';
+import { BreakerForm } from '@/components/forms/BreakerForm';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { PanelWithRelations, Device } from '@/types/panel';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { PanelWithRelations, Device, Breaker } from '@/types/panel';
+import { Edit, Trash2, MoreVertical, Plus, Map, LogIn } from 'lucide-react';
+import Link from 'next/link';
+
+type ModalState =
+  | { type: 'none' }
+  | { type: 'createBreaker'; position?: string }
+  | { type: 'editBreaker'; breaker: Breaker };
 
 export default function DemoPage() {
   const [panel, setPanel] = useState<PanelWithRelations | null>(null);
   const [selectedBreakerId, setSelectedBreakerId] = useState<string>();
   const [loading, setLoading] = useState(true);
+  const [modalState, setModalState] = useState<ModalState>({ type: 'none' });
+  const [isSaving, setIsSaving] = useState(false);
+
+  const closeModal = () => setModalState({ type: 'none' });
+
+  const fetchPanel = useCallback(async () => {
+    try {
+      console.log('Fetching panels...');
+      const res = await fetch('/api/panels');
+      console.log('Response status:', res.status);
+      const data = await res.json();
+      console.log('Panels received:', data.length);
+      if (data.length > 0) {
+        setPanel(data[0]);
+      } else {
+        console.log('No panels in response');
+      }
+    } catch (err) {
+      console.error('Error loading panel:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    fetch('/api/panels')
-      .then(res => res.json())
-      .then(data => {
-        if (data.length > 0) {
-          setPanel(data[0]);
-        }
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error('Error loading panel:', err);
-        setLoading(false);
+    fetchPanel();
+  }, [fetchPanel]);
+
+  const handleCreateBreaker = async (data: {
+    panelId: string;
+    position: string;
+    amperage: number;
+    poles: number;
+    label: string;
+    circuitType: string;
+    protectionType: string;
+  }) => {
+    if (!panel) return;
+    setIsSaving(true);
+    try {
+      const res = await fetch('/api/breakers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
       });
-  }, []);
+      if (res.ok) {
+        await fetchPanel();
+        closeModal();
+      }
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleUpdateBreaker = async (data: {
+    panelId: string;
+    position: string;
+    amperage: number;
+    poles: number;
+    label: string;
+    circuitType: string;
+    protectionType: string;
+  }) => {
+    if (!panel || modalState.type !== 'editBreaker') return;
+    setIsSaving(true);
+    try {
+      const res = await fetch(`/api/breakers/${modalState.breaker.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...data, panelId: panel.id }),
+      });
+      if (res.ok) {
+        await fetchPanel();
+        closeModal();
+        setSelectedBreakerId(undefined);
+      }
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDeleteBreaker = async (breakerId: string) => {
+    if (!panel) return;
+    try {
+      const res = await fetch(`/api/breakers/${breakerId}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ panelId: panel.id }),
+      });
+      if (res.ok) {
+        await fetchPanel();
+        setSelectedBreakerId(undefined);
+      }
+    } catch (err) {
+      console.error('Error deleting breaker:', err);
+    }
+  };
+
+  const handleBreakerMove = async (breakerId: string, newPosition: string) => {
+    if (!panel) return;
+    try {
+      const res = await fetch(`/api/breakers/${breakerId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ panelId: panel.id, position: newPosition }),
+      });
+      if (res.ok) {
+        await fetchPanel();
+      }
+    } catch (err) {
+      console.error('Error moving breaker:', err);
+    }
+  };
 
   if (loading) {
     return (
@@ -76,11 +196,27 @@ export default function DemoPage() {
   return (
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-7xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2">CircuitMap Demo</h1>
-          <p className="text-muted-foreground">
-            Click on a breaker to see connected devices
-          </p>
+        <div className="mb-8 flex justify-between items-start">
+          <div>
+            <h1 className="text-4xl font-bold mb-2">CircuitMap Demo</h1>
+            <p className="text-muted-foreground">
+              Click breakers to view details • Click empty slots to add • Drag to reorder
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Link href={`/dashboard/panels/${panel.id}`}>
+              <Button variant="outline">
+                <Map className="h-4 w-4 mr-2" />
+                Floor Plan
+              </Button>
+            </Link>
+            <Link href="/auth/login">
+              <Button>
+                <LogIn className="h-4 w-4 mr-2" />
+                Sign In
+              </Button>
+            </Link>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -89,18 +225,49 @@ export default function DemoPage() {
             <PanelView
               breakers={panel.breakers}
               totalSlots={panel.totalSlots}
+              mainAmperage={panel.mainAmperage}
               selectedBreakerId={selectedBreakerId}
               onBreakerClick={setSelectedBreakerId}
+              onEmptySlotClick={(position) =>
+                setModalState({ type: 'createBreaker', position })
+              }
+              onBreakerMove={handleBreakerMove}
             />
           </div>
 
           {/* Details Panel */}
           <div className="lg:col-span-1">
             <Card>
-              <CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle>
                   {selectedBreaker ? 'Breaker Details' : 'Panel Info'}
                 </CardTitle>
+                {selectedBreaker && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onClick={() =>
+                          setModalState({ type: 'editBreaker', breaker: selectedBreaker })
+                        }
+                      >
+                        <Edit className="h-4 w-4 mr-2" />
+                        Edit
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="text-destructive"
+                        onClick={() => handleDeleteBreaker(selectedBreaker.id)}
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
               </CardHeader>
               <CardContent>
                 {selectedBreaker ? (
@@ -145,6 +312,25 @@ export default function DemoPage() {
                       <Badge variant="outline">
                         {selectedBreaker.protectionType}
                       </Badge>
+                    </div>
+
+                    <div className="flex gap-2 pt-4 border-t">
+                      <Button
+                        className="flex-1"
+                        onClick={() =>
+                          setModalState({ type: 'editBreaker', breaker: selectedBreaker })
+                        }
+                      >
+                        <Edit className="h-4 w-4 mr-2" />
+                        Edit Breaker
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="text-destructive"
+                        onClick={() => handleDeleteBreaker(selectedBreaker.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
 
                     <div className="border-t pt-4">
@@ -220,6 +406,13 @@ export default function DemoPage() {
                     </div>
 
                     <div className="border-t pt-4">
+                      <Button
+                        className="w-full mb-4"
+                        onClick={() => setModalState({ type: 'createBreaker' })}
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Breaker
+                      </Button>
                       <div className="text-sm font-medium mb-2">Statistics</div>
                       <div className="space-y-2 text-sm">
                         <div className="flex justify-between">
@@ -261,6 +454,45 @@ export default function DemoPage() {
           </div>
         </div>
       </div>
+
+      {/* Create Breaker Dialog */}
+      <Dialog
+        open={modalState.type === 'createBreaker'}
+        onOpenChange={closeModal}
+      >
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Add Breaker</DialogTitle>
+            <DialogDescription>Create a new breaker in this panel.</DialogDescription>
+          </DialogHeader>
+          <BreakerForm
+            panelId={panel.id}
+            position={modalState.type === 'createBreaker' ? modalState.position : undefined}
+            onSubmit={handleCreateBreaker}
+            onCancel={closeModal}
+            isLoading={isSaving}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Breaker Dialog */}
+      <Dialog open={modalState.type === 'editBreaker'} onOpenChange={closeModal}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Edit Breaker</DialogTitle>
+            <DialogDescription>Update breaker information.</DialogDescription>
+          </DialogHeader>
+          {modalState.type === 'editBreaker' && (
+            <BreakerForm
+              breaker={modalState.breaker}
+              panelId={panel.id}
+              onSubmit={handleUpdateBreaker}
+              onCancel={closeModal}
+              isLoading={isSaving}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

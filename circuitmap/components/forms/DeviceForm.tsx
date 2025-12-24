@@ -1,0 +1,205 @@
+'use client';
+
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Device, Breaker } from '@/types/panel';
+
+const DEVICE_TYPES = [
+  { value: 'outlet', label: 'Outlet', subtypes: ['standard', 'gfci', 'usb', '20a', 'dedicated'] },
+  { value: 'light', label: 'Light Fixture', subtypes: ['ceiling', 'recessed', 'chandelier', 'sconce', 'track', 'outdoor'] },
+  { value: 'switch', label: 'Switch', subtypes: ['single', 'three-way', 'dimmer', 'smart', 'fan'] },
+  { value: 'appliance', label: 'Appliance', subtypes: ['refrigerator', 'dishwasher', 'garbage_disposal', 'microwave', 'vent_hood'] },
+  { value: 'hvac', label: 'HVAC', subtypes: ['ac_unit', 'furnace', 'heat_pump', 'mini_split', 'thermostat'] },
+  { value: 'water_heater', label: 'Water Heater', subtypes: ['tank', 'tankless', 'heat_pump'] },
+  { value: 'dryer', label: 'Dryer', subtypes: ['electric', 'gas'] },
+  { value: 'range', label: 'Range/Oven', subtypes: ['electric', 'gas', 'induction'] },
+  { value: 'ev_charger', label: 'EV Charger', subtypes: ['level1', 'level2'] },
+  { value: 'pool', label: 'Pool/Spa', subtypes: ['pump', 'heater', 'lights'] },
+  { value: 'smoke_detector', label: 'Smoke/CO Detector', subtypes: ['hardwired', 'battery'] },
+  { value: 'fan', label: 'Fan', subtypes: ['ceiling', 'exhaust', 'whole_house'] },
+  { value: 'other', label: 'Other', subtypes: [] },
+];
+
+interface DeviceFormProps {
+  device?: Device;
+  roomId: string;
+  panelId: string;
+  breakers: Breaker[];
+  onSubmit: (data: {
+    roomId: string;
+    panelId: string;
+    breakerId?: string | null;
+    type: string;
+    subtype?: string;
+    description: string;
+    estimatedWattage?: number;
+    isGfciProtected?: boolean;
+    notes?: string;
+  }) => void;
+  onCancel: () => void;
+  isLoading?: boolean;
+}
+
+export function DeviceForm({
+  device,
+  roomId,
+  panelId,
+  breakers,
+  onSubmit,
+  onCancel,
+  isLoading,
+}: DeviceFormProps) {
+  const [type, setType] = useState(device?.type ?? 'outlet');
+  const [subtype, setSubtype] = useState(device?.subtype ?? '');
+  const [description, setDescription] = useState(device?.description ?? '');
+  const [breakerId, setBreakerId] = useState(device?.breakerId ?? '');
+  const [estimatedWattage, setEstimatedWattage] = useState(device?.estimatedWattage ?? undefined);
+  const [isGfciProtected, setIsGfciProtected] = useState(device?.isGfciProtected ?? false);
+  const [notes, setNotes] = useState(device?.notes ?? '');
+
+  const currentType = DEVICE_TYPES.find((t) => t.value === type);
+  const subtypes = currentType?.subtypes ?? [];
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSubmit({
+      roomId,
+      panelId,
+      breakerId: breakerId || null,
+      type,
+      subtype: subtype || undefined,
+      description,
+      estimatedWattage,
+      isGfciProtected,
+      notes: notes || undefined,
+    });
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="type">Device Type *</Label>
+          <Select value={type} onValueChange={(v) => { setType(v); setSubtype(''); }}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {DEVICE_TYPES.map((t) => (
+                <SelectItem key={t.value} value={t.value}>
+                  {t.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {subtypes.length > 0 && (
+          <div className="space-y-2">
+            <Label htmlFor="subtype">Subtype</Label>
+            <Select value={subtype} onValueChange={setSubtype}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select..." />
+              </SelectTrigger>
+              <SelectContent>
+                {subtypes.map((st) => (
+                  <SelectItem key={st} value={st}>
+                    {st.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="description">Description *</Label>
+        <Input
+          id="description"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="e.g., Outlet behind TV, Kitchen ceiling light"
+          required
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="breakerId">Connected Breaker</Label>
+        <Select value={breakerId} onValueChange={setBreakerId}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select breaker..." />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="">Not assigned</SelectItem>
+            {breakers.map((b) => (
+              <SelectItem key={b.id} value={b.id}>
+                #{b.position} - {b.label} ({b.amperage}A)
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="estimatedWattage">Est. Wattage</Label>
+          <Input
+            id="estimatedWattage"
+            type="number"
+            min={0}
+            value={estimatedWattage ?? ''}
+            onChange={(e) => setEstimatedWattage(e.target.value ? parseInt(e.target.value) : undefined)}
+            placeholder="Optional"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="isGfciProtected">GFCI Protected</Label>
+          <Select
+            value={isGfciProtected ? 'yes' : 'no'}
+            onValueChange={(v) => setIsGfciProtected(v === 'yes')}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="no">No</SelectItem>
+              <SelectItem value="yes">Yes</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="notes">Notes</Label>
+        <Textarea
+          id="notes"
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder="Any additional notes..."
+          rows={2}
+        />
+      </div>
+
+      <div className="flex justify-end gap-2 pt-4">
+        <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>
+          Cancel
+        </Button>
+        <Button type="submit" disabled={isLoading || !description}>
+          {isLoading ? 'Saving...' : device ? 'Update Device' : 'Create Device'}
+        </Button>
+      </div>
+    </form>
+  );
+}

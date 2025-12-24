@@ -64,11 +64,15 @@ export interface Device {
   createdAt: Date;
 }
 
+export interface RoomWithDevices extends Room {
+  devices: Device[];
+}
+
+export interface FloorWithRooms extends Floor {
+  rooms: RoomWithDevices[];
+}
+
 export interface PanelWithRelations extends Panel {
   breakers: Breaker[];
-  floors: (Floor & {
-    rooms: (Room & {
-      devices: Device[];
-    })[];
-  })[];
+  floors: FloorWithRooms[];
 }

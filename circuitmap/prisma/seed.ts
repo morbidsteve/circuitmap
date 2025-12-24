@@ -6,6 +6,22 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('Starting seed...');
 
+  // Create admin user
+  const adminPassword = await bcrypt.hash('admin123', 10);
+
+  const admin = await prisma.user.upsert({
+    where: { email: 'admin@circuitmap.com' },
+    update: {},
+    create: {
+      email: 'admin@circuitmap.com',
+      password: adminPassword,
+      fullName: 'Admin User',
+      subscriptionTier: 'premium',
+    },
+  });
+
+  console.log('Created admin user:', admin.email);
+
   // Create demo user
   const hashedPassword = await bcrypt.hash('demo123', 10);
 
@@ -230,7 +246,10 @@ async function main() {
   console.log(`Created ${createdDevices.length} devices`);
 
   console.log('\nSeed completed successfully!');
-  console.log('Demo credentials:');
+  console.log('\nAdmin credentials:');
+  console.log('Email: admin@circuitmap.com');
+  console.log('Password: admin123');
+  console.log('\nDemo credentials:');
   console.log('Email: demo@circuitmap.com');
   console.log('Password: demo123');
 }

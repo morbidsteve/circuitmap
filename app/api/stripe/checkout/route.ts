@@ -24,7 +24,11 @@ export async function POST(request: Request) {
 
     const priceId = STRIPE_PRICES[priceType as keyof typeof STRIPE_PRICES];
     if (!priceId) {
-      return NextResponse.json({ error: 'Price not configured' }, { status: 400 });
+      console.error('Missing price ID for:', priceType, 'Available prices:', STRIPE_PRICES);
+      return NextResponse.json({
+        error: 'Price not configured',
+        details: `Missing STRIPE_${priceType.toUpperCase()}_PRICE_ID env var`
+      }, { status: 400 });
     }
 
     // Get user to check if they have an existing Stripe customer ID
@@ -84,6 +88,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ url: checkoutSession.url });
   } catch (error) {
     console.error('Error creating checkout session:', error);
-    return NextResponse.json({ error: 'Failed to create checkout session' }, { status: 500 });
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return NextResponse.json({ error: 'Failed to create checkout session', details: errorMessage }, { status: 500 });
   }
 }

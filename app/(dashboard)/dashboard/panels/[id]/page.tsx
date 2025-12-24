@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { PanelView } from '@/components/panel/PanelView'
@@ -109,6 +109,31 @@ export default function PanelDetailPage() {
   const [selectedBreakerId, setSelectedBreakerId] = useState<string>()
   const [modalState, setModalState] = useState<ModalState>({ type: 'none' })
   const [expandedFloors, setExpandedFloors] = useState<Set<string>>(new Set())
+  const hasMigratedTandems = useRef(false)
+
+  // Auto-migrate any combined tandem breakers (e.g., "14A/14B") to separate records
+  useEffect(() => {
+    if (panel && !hasMigratedTandems.current) {
+      hasMigratedTandems.current = true
+
+      // Check if there are any combined tandem breakers to migrate
+      const hasCombinedTandems = panel.breakers.some(b =>
+        /^\d+[AB]\/\d+[AB]$/i.test(b.position)
+      )
+
+      if (hasCombinedTandems) {
+        fetch(`/api/panels/${panel.id}/migrate-tandems`, { method: 'POST' })
+          .then(res => res.json())
+          .then(data => {
+            if (data.migrated > 0) {
+              // Refetch panel data to get updated breakers
+              window.location.reload()
+            }
+          })
+          .catch(err => console.error('Failed to migrate tandems:', err))
+      }
+    }
+  }, [panel])
 
   const closeModal = () => setModalState({ type: 'none' })
 

@@ -80,7 +80,7 @@ export function DeviceForm({
   const [type, setType] = useState(device?.type ?? 'outlet');
   const [subtype, setSubtype] = useState(device?.subtype ?? '');
   const [description, setDescription] = useState(device?.description ?? '');
-  const [breakerId, setBreakerId] = useState(device?.breakerId ?? '');
+  const [breakerId, setBreakerId] = useState(device?.breakerId ?? '__none__');
   const [placement, setPlacement] = useState<DevicePlacement>(device?.placement ?? 'wall');
   const [heightFromFloor, setHeightFromFloor] = useState<number | undefined>(device?.heightFromFloor ?? undefined);
   const [estimatedWattage, setEstimatedWattage] = useState(device?.estimatedWattage ?? undefined);
@@ -116,7 +116,7 @@ export function DeviceForm({
     onSubmit({
       roomId,
       panelId,
-      breakerId: breakerId || null,
+      breakerId: breakerId === '__none__' ? null : breakerId,
       type,
       subtype: subtype || undefined,
       description,
@@ -237,7 +237,7 @@ export function DeviceForm({
             <SelectValue placeholder="Select breaker..." />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Not assigned</SelectItem>
+            <SelectItem value="__none__">Not assigned</SelectItem>
             {breakers.map((b) => (
               <SelectItem key={b.id} value={b.id}>
                 #{b.position} - {b.label} ({b.amperage}A)

@@ -1,9 +1,9 @@
 'use client'
 
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, useState } from 'react'
 import { Rect, Text, Group, Transformer } from 'react-konva'
 import Konva from 'konva'
-import { RoomWithDevices } from '@/types/panel'
+import { RoomWithDevices, Breaker, Device } from '@/types/panel'
 import { useFloorPlanStore } from '@/stores/floorPlanStore'
 
 interface RoomShapeProps {
@@ -15,6 +15,7 @@ interface RoomShapeProps {
   layoutH: number
   isSelected: boolean
   onSelect: () => void
+  children?: React.ReactNode
 }
 
 export function RoomShape({
@@ -26,19 +27,36 @@ export function RoomShape({
   layoutH,
   isSelected,
   onSelect,
+  children,
 }: RoomShapeProps) {
-  const shapeRef = useRef<Konva.Rect>(null)
+  const groupRef = useRef<Konva.Group>(null)
+  const rectRef = useRef<Konva.Rect>(null)
   const trRef = useRef<Konva.Transformer>(null)
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
 
-  const { updateRoomPosition, updateRoomSize } = useFloorPlanStore()
+  const { updateRoomPosition, updateRoomSize, activeTool } = useFloorPlanStore()
 
   // Attach transformer when selected
   useEffect(() => {
-    if (isSelected && trRef.current && shapeRef.current) {
-      trRef.current.nodes([shapeRef.current])
+    if (isSelected && trRef.current && rectRef.current) {
+      trRef.current.nodes([rectRef.current])
       trRef.current.getLayer()?.batchDraw()
     }
   }, [isSelected])
+
+  // Reset drag offset when layout changes (e.g., after save)
+  useEffect(() => {
+    setDragOffset({ x: 0, y: 0 })
+  }, [layoutX, layoutY])
+
+  const handleDragMove = (e: Konva.KonvaEventObject<DragEvent>) => {
+    // Track offset during drag so children can follow
+    const node = e.target
+    setDragOffset({
+      x: node.x() - layoutX,
+      y: node.y() - layoutY,
+    })
+  }
 
   const handleDragEnd = (e: Konva.KonvaEventObject<DragEvent>) => {
     const node = e.target
@@ -47,10 +65,12 @@ export function RoomShape({
     const newX = Math.max(0, (node.x() - PADDING) / scale)
     const newY = Math.max(0, (node.y() - PADDING) / scale)
     updateRoomPosition(room.id, newX, newY)
+    // Reset drag offset since the layout will update
+    setDragOffset({ x: 0, y: 0 })
   }
 
   const handleTransformEnd = () => {
-    const node = shapeRef.current
+    const node = rectRef.current
     if (!node) return
 
     const scaleX = node.scaleX()
@@ -71,14 +91,28 @@ export function RoomShape({
   const widthFeet = Math.round(layoutW / scale)
   const heightFeet = Math.round(layoutH / scale)
 
+  // Current position including any drag offset
+  const currentX = layoutX + dragOffset.x
+  const currentY = layoutY + dragOffset.y
+
+  // Only allow dragging with select tool
+  const isDraggable = activeTool === 'select'
+
   return (
     <>
-      <Group>
+      <Group
+        ref={groupRef}
+        x={currentX}
+        y={currentY}
+        draggable={isDraggable}
+        onDragMove={handleDragMove}
+        onDragEnd={handleDragEnd}
+      >
         {/* Room rectangle */}
         <Rect
-          ref={shapeRef}
-          x={layoutX}
-          y={layoutY}
+          ref={rectRef}
+          x={0}
+          y={0}
           width={layoutW}
           height={layoutH}
           fill="#FFFFFF"
@@ -89,17 +123,15 @@ export function RoomShape({
           shadowBlur={isSelected ? 12 : 6}
           shadowOpacity={isSelected ? 0.2 : 0.1}
           shadowOffsetY={2}
-          draggable
           onClick={onSelect}
           onTap={onSelect}
-          onDragEnd={handleDragEnd}
           onTransformEnd={handleTransformEnd}
         />
 
         {/* Room name */}
         <Text
-          x={layoutX + 12}
-          y={layoutY + 12}
+          x={12}
+          y={12}
           text={room.name}
           fontSize={16}
           fontStyle="bold"
@@ -109,8 +141,8 @@ export function RoomShape({
 
         {/* Room dimensions */}
         <Text
-          x={layoutX + 12}
-          y={layoutY + 32}
+          x={12}
+          y={32}
           text={`${widthFeet}' × ${heightFeet}'`}
           fontSize={12}
           fill="#64748B"
@@ -119,7 +151,7 @@ export function RoomShape({
 
         {/* Device count indicator */}
         {room.devices && room.devices.length > 0 && (
-          <Group x={layoutX + layoutW - 30} y={layoutY + 10}>
+          <Group x={layoutW - 30} y={10}>
             <Rect
               x={0}
               y={0}
@@ -141,6 +173,9 @@ export function RoomShape({
             />
           </Group>
         )}
+
+        {/* Render devices inside the room group so they move together */}
+        {children}
       </Group>
 
       {/* Resize handles when selected */}

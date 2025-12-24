@@ -424,7 +424,7 @@ export function FloorPlanCanvas({ floor, breakers, walls = [], width, height }: 
         <WallDrawingLayer scale={SCALE} />
       </Layer>
 
-      {/* Rooms layer */}
+      {/* Rooms layer (with devices as children so they move together) */}
       <Layer>
         {roomsWithLayout.map((room) => (
           <RoomShape
@@ -437,27 +437,25 @@ export function FloorPlanCanvas({ floor, breakers, walls = [], width, height }: 
             layoutH={room.layoutH}
             isSelected={selectedRoomId === room.id}
             onSelect={() => selectRoom(room.id)}
-          />
-        ))}
-      </Layer>
-
-      {/* Devices layer */}
-      <Layer>
-        {allDevices.map(({ device, room, layoutX, layoutY }) => (
-          <DeviceMarker
-            key={device.id}
-            device={device}
-            room={room}
-            breakers={breakers}
-            scale={SCALE}
-            roomOffsetX={layoutX}
-            roomOffsetY={layoutY}
-            isSelected={selectedDeviceId === device.id}
-            isHighlighted={shouldHighlightDevice(device)}
-            isPulsingHighlight={shouldPulseDevice(device)}
-            onSelect={() => selectDevice(device.id)}
-            onDeviceClick={handleDeviceClick}
-          />
+          >
+            {/* Devices inside this room - positioned relative to room origin */}
+            {(room.devices || []).map((device) => (
+              <DeviceMarker
+                key={device.id}
+                device={device}
+                room={room}
+                breakers={breakers}
+                scale={SCALE}
+                roomOffsetX={0}
+                roomOffsetY={0}
+                isSelected={selectedDeviceId === device.id}
+                isHighlighted={shouldHighlightDevice(device)}
+                isPulsingHighlight={shouldPulseDevice(device)}
+                onSelect={() => selectDevice(device.id)}
+                onDeviceClick={handleDeviceClick}
+              />
+            ))}
+          </RoomShape>
         ))}
       </Layer>
 

@@ -264,30 +264,30 @@ export default function PanelDetailPage() {
 
       {/* Tabs */}
       <Tabs defaultValue="breakers" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="breakers" className="gap-2">
+        <TabsList className="w-full justify-start overflow-x-auto flex-nowrap">
+          <TabsTrigger value="breakers" className="gap-2 min-w-fit">
             <Zap className="h-4 w-4" />
-            Panel
+            <span className="hidden sm:inline">Panel</span>
           </TabsTrigger>
-          <TabsTrigger value="summary" className="gap-2">
+          <TabsTrigger value="summary" className="gap-2 min-w-fit">
             <List className="h-4 w-4" />
-            Summary
+            <span className="hidden sm:inline">Summary</span>
           </TabsTrigger>
-          <TabsTrigger value="circuits" className="gap-2">
+          <TabsTrigger value="circuits" className="gap-2 min-w-fit">
             <Network className="h-4 w-4" />
-            Circuits
+            <span className="hidden sm:inline">Circuits</span>
           </TabsTrigger>
-          <TabsTrigger value="floorplan" className="gap-2">
+          <TabsTrigger value="floorplan" className="gap-2 min-w-fit">
             <Map className="h-4 w-4" />
-            Floor Plan
+            <span className="hidden sm:inline">Floor Plan</span>
           </TabsTrigger>
-          <TabsTrigger value="locations" className="gap-2">
+          <TabsTrigger value="locations" className="gap-2 min-w-fit">
             <Home className="h-4 w-4" />
-            Locations
+            <span className="hidden sm:inline">Locations</span>
           </TabsTrigger>
-          <TabsTrigger value="devices" className="gap-2">
+          <TabsTrigger value="devices" className="gap-2 min-w-fit">
             <Plug className="h-4 w-4" />
-            Devices
+            <span className="hidden sm:inline">Devices</span>
           </TabsTrigger>
         </TabsList>
 

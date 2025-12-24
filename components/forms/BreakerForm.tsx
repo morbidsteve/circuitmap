@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Loader2 } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -39,6 +40,39 @@ const PROTECTION_TYPES = [
   { value: 'afci', label: 'AFCI' },
   { value: 'dual', label: 'Dual Function (GFCI+AFCI)' },
 ];
+
+// Validate breaker position format
+function validatePosition(pos: string): { valid: boolean; type: string; message: string } {
+  const trimmed = pos.trim().toUpperCase();
+  if (!trimmed) return { valid: false, type: '', message: '' };
+
+  // Single position: "1", "2", "14"
+  if (/^\d+$/.test(trimmed)) {
+    return { valid: true, type: 'single', message: `Single-pole at position ${trimmed}` };
+  }
+
+  // Multi-pole range: "1-3", "2-4"
+  if (/^\d+-\d+$/.test(trimmed)) {
+    const [start, end] = trimmed.split('-').map(Number);
+    const poles = Math.ceil((end - start + 1) / 2);
+    if (poles >= 2 && poles <= 3) {
+      return { valid: true, type: 'multi', message: `${poles}-pole breaker (240V)` };
+    }
+    return { valid: false, type: 'multi', message: 'Invalid range - use consecutive positions' };
+  }
+
+  // Combined tandem: "14A/14B"
+  if (/^\d+[AB]\/\d+[AB]$/i.test(trimmed)) {
+    return { valid: true, type: 'tandem', message: 'Tandem - creates 2 separate breakers' };
+  }
+
+  // Individual tandem: "14A" or "14B"
+  if (/^\d+[AB]$/i.test(trimmed)) {
+    return { valid: true, type: 'tandem-single', message: `Tandem half at ${trimmed}` };
+  }
+
+  return { valid: false, type: 'unknown', message: 'Invalid format' };
+}
 
 interface BreakerFormProps {
   breaker?: Breaker;
@@ -102,10 +136,18 @@ export function BreakerForm({
             onChange={(e) => setPosition(e.target.value)}
             placeholder="e.g., 1, 1-3, 14A/14B"
             required
+            className={position && !validatePosition(position).valid ? 'border-red-500 focus-visible:ring-red-500' : ''}
           />
-          <p className="text-xs text-muted-foreground">
-            Single: 1 | Double-pole: 1-3 | Tandem: 14A/14B (creates 2 breakers)
-          </p>
+          {position ? (
+            <p className={`text-xs ${validatePosition(position).valid ? 'text-green-600' : 'text-red-500'}`}>
+              {validatePosition(position).valid ? '✓ ' : '✗ '}
+              {validatePosition(position).message || 'Enter a valid position format'}
+            </p>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Single: 1 | Double-pole: 1-3 | Tandem: 14A/14B
+            </p>
+          )}
         </div>
 
         <div className="space-y-2">
@@ -214,7 +256,8 @@ export function BreakerForm({
         <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>
           Cancel
         </Button>
-        <Button type="submit" disabled={isLoading || !position || !label}>
+        <Button type="submit" disabled={isLoading || !position || !label || (!!position && !validatePosition(position).valid)}>
+          {isLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
           {isLoading ? 'Saving...' : breaker ? 'Update Breaker' : 'Create Breaker'}
         </Button>
       </div>

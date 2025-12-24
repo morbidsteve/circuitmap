@@ -82,13 +82,14 @@ export function BreakerSlot({ breaker, position, side, isSelected, onClick }: Br
         <div
           className={cn(
             "flex-1 h-10 mx-1 rounded border-2 border-dashed border-gray-300/50 bg-gray-600/30",
-            "flex items-center justify-center text-xs text-gray-300/70 cursor-pointer",
-            "hover:border-gray-200 hover:bg-gray-500/40 hover:text-gray-200 transition-all",
+            "flex items-center justify-center text-xs text-gray-400 cursor-pointer",
+            "hover:border-blue-400 hover:bg-blue-500/20 hover:text-blue-300 transition-all",
             "group"
           )}
           onClick={onClick}
+          title="Click to add breaker"
         >
-          <Plus className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+          <Plus className="h-4 w-4 opacity-50 group-hover:opacity-100 transition-opacity" />
         </div>
       </div>
     );

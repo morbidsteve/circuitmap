@@ -12,8 +12,12 @@ const createBreakerSchema = z.object({
   amperage: z.number().int().positive(),
   poles: z.number().int().min(1).max(3).default(1),
   label: z.string().min(1),
-  circuitType: z.enum(['general', 'lighting', 'appliance', 'hvac', 'outdoor', 'other']).default('general'),
-  protectionType: z.enum(['standard', 'gfci', 'afci', 'dual_function']).default('standard'),
+  circuitType: z.enum([
+    'general', 'lighting', 'appliance', 'hvac', 'outdoor', 'other',
+    'kitchen', 'bathroom', 'dryer', 'range', 'water_heater',
+    'ev_charger', 'pool', 'garage', 'subpanel'
+  ]).default('general'),
+  protectionType: z.enum(['standard', 'gfci', 'afci', 'dual_function', 'dual']).default('standard'),
   isOn: z.boolean().default(true),
   notes: z.string().optional(),
   sortOrder: z.number().int().optional(),

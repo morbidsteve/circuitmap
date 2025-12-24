@@ -153,23 +153,50 @@ export function DeviceForm({
           </Select>
         </div>
 
-        {subtypes.length > 0 && (
-          <div className="space-y-2">
-            <Label htmlFor="subtype">Subtype</Label>
-            <Select value={subtype} onValueChange={setSubtype}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select..." />
-              </SelectTrigger>
-              <SelectContent>
-                {subtypes.map((st) => (
-                  <SelectItem key={st} value={st}>
-                    {st.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+        <div className="space-y-2">
+          <Label htmlFor="subtype">Subtype</Label>
+          <div className="flex gap-2">
+            {subtypes.length > 0 ? (
+              <>
+                <Select value={subtypes.includes(subtype) ? subtype : '__custom__'} onValueChange={(v) => {
+                  if (v === '__custom__') {
+                    setSubtype('');
+                  } else {
+                    setSubtype(v);
+                  }
+                }}>
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder="Select or type custom..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {subtypes.map((st) => (
+                      <SelectItem key={st} value={st}>
+                        {st.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
+                      </SelectItem>
+                    ))}
+                    <SelectItem value="__custom__">Custom...</SelectItem>
+                  </SelectContent>
+                </Select>
+                {(!subtypes.includes(subtype) || subtype === '') && (
+                  <Input
+                    placeholder="Type custom subtype"
+                    value={subtype}
+                    onChange={(e) => setSubtype(e.target.value)}
+                    className="flex-1"
+                  />
+                )}
+              </>
+            ) : (
+              <Input
+                id="subtype"
+                value={subtype}
+                onChange={(e) => setSubtype(e.target.value)}
+                placeholder="e.g., specific model or type"
+                className="flex-1"
+              />
+            )}
           </div>
-        )}
+        </div>
       </div>
 
       <div className="space-y-2">

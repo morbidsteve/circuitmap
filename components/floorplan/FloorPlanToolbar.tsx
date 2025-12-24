@@ -28,7 +28,11 @@ import {
   Ruler,
   Eraser,
   Upload,
+  Box,
+  Layers,
+  PanelRight,
 } from 'lucide-react'
+import type { ViewMode } from '@/types/floorplan'
 import { cn } from '@/lib/utils'
 
 interface FloorPlanToolbarProps {
@@ -60,6 +64,10 @@ export function FloorPlanToolbar({ floors, breakers, onSave, onUploadImage, isSa
     discardChanges,
     wallDrawingState,
     cancelWallDrawing,
+    viewMode,
+    setViewMode,
+    threeDSettings,
+    setThreeDSettings,
   } = useFloorPlanStore()
 
   // Sort breakers by position for the filter dropdown
@@ -95,6 +103,42 @@ export function FloorPlanToolbar({ floors, breakers, onSave, onUploadImage, isSa
 
   return (
     <div className="flex items-center gap-4 p-2 bg-muted/50 rounded-lg flex-wrap">
+      {/* View Mode Switcher */}
+      <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
+        <Button
+          variant={viewMode === '2d' ? 'default' : 'ghost'}
+          size="sm"
+          onClick={() => setViewMode('2d')}
+          title="2D Plan View"
+          className="h-7 px-2"
+        >
+          <Layers className="h-3.5 w-3.5 mr-1" />
+          2D
+        </Button>
+        <Button
+          variant={viewMode === '3d' ? 'default' : 'ghost'}
+          size="sm"
+          onClick={() => setViewMode('3d')}
+          title="3D View"
+          className="h-7 px-2"
+        >
+          <Box className="h-3.5 w-3.5 mr-1" />
+          3D
+        </Button>
+        <Button
+          variant={viewMode === 'elevation' ? 'default' : 'ghost'}
+          size="sm"
+          onClick={() => setViewMode('elevation')}
+          title="Elevation View"
+          className="h-7 px-2"
+        >
+          <PanelRight className="h-3.5 w-3.5 mr-1" />
+          Elev
+        </Button>
+      </div>
+
+      <div className="w-px h-6 bg-border" />
+
       {/* Floor Selector with color indicator */}
       <div className="flex items-center gap-2">
         {floorColor && (
@@ -243,7 +287,7 @@ export function FloorPlanToolbar({ floors, breakers, onSave, onUploadImage, isSa
           <Network className="h-4 w-4 mr-1" />
           Wires
         </Button>
-        {onUploadImage && (
+        {onUploadImage && viewMode === '2d' && (
           <Button
             variant="ghost"
             size="sm"
@@ -255,6 +299,33 @@ export function FloorPlanToolbar({ floors, breakers, onSave, onUploadImage, isSa
           </Button>
         )}
       </div>
+
+      {/* 3D View Options - only show in 3D mode */}
+      {viewMode === '3d' && (
+        <>
+          <div className="w-px h-6 bg-border" />
+          <div className="flex items-center gap-2">
+            <Button
+              variant={threeDSettings.showAllFloors ? 'secondary' : 'ghost'}
+              size="sm"
+              onClick={() => setThreeDSettings({ showAllFloors: !threeDSettings.showAllFloors })}
+              title="Show all floors stacked"
+            >
+              <Layers className="h-4 w-4 mr-1" />
+              All Floors
+            </Button>
+            <Button
+              variant={threeDSettings.showWireRouting ? 'secondary' : 'ghost'}
+              size="sm"
+              onClick={() => setThreeDSettings({ showWireRouting: !threeDSettings.showWireRouting })}
+              title="Show wire routing"
+            >
+              <Network className="h-4 w-4 mr-1" />
+              Wires
+            </Button>
+          </div>
+        </>
+      )}
 
       <div className="w-px h-6 bg-border" />
 

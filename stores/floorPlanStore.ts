@@ -7,6 +7,9 @@ import type {
   HighlightMode,
   Wall,
   Opening,
+  ViewMode,
+  CameraPreset,
+  ThreeDSettings,
 } from '@/types/floorplan'
 
 interface RoomUpdate {
@@ -53,6 +56,10 @@ interface FloorPlanState {
   showDimensions: boolean
   showBackgroundImage: boolean
 
+  // 3D View state
+  viewMode: ViewMode
+  threeDSettings: ThreeDSettings
+
   // Selection state
   selectedRoomId: string | null
   selectedDeviceId: string | null
@@ -89,6 +96,11 @@ interface FloorPlanState {
   setShowDimensions: (show: boolean) => void
   setShowBackgroundImage: (show: boolean) => void
   setActiveTool: (tool: FloorPlanTool) => void
+
+  // Actions - 3D View
+  setViewMode: (mode: ViewMode) => void
+  setThreeDSettings: (settings: Partial<ThreeDSettings>) => void
+  setCameraPreset: (preset: CameraPreset) => void
 
   // Actions - Selection
   selectRoom: (id: string | null) => void
@@ -143,6 +155,17 @@ export const useFloorPlanStore = create<FloorPlanState>((set, get) => ({
   showWires: true,
   showDimensions: true,
   showBackgroundImage: true,
+
+  // Initial state - 3D View
+  viewMode: '2d',
+  threeDSettings: {
+    showAllFloors: false,
+    floorSpacing: 3,
+    cameraPreset: 'isometric',
+    showWireRouting: true,
+    animateWires: false,
+    ceilingHeight: 8,
+  },
 
   // Initial state - Selection
   selectedRoomId: null,
@@ -212,6 +235,15 @@ export const useFloorPlanStore = create<FloorPlanState>((set, get) => ({
       set({ activeTool: tool })
     }
   },
+
+  // 3D View actions
+  setViewMode: (mode) => set({ viewMode: mode }),
+  setThreeDSettings: (settings) => set((state) => ({
+    threeDSettings: { ...state.threeDSettings, ...settings },
+  })),
+  setCameraPreset: (preset) => set((state) => ({
+    threeDSettings: { ...state.threeDSettings, cameraPreset: preset },
+  })),
 
   // Selection actions
   selectRoom: (id) => set({

@@ -12,7 +12,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { PanelWithRelations, Breaker } from '@/types/panel';
+import { PanelWithRelations, Breaker, DevicePlacement } from '@/types/panel';
+
+const PLACEMENT_OPTIONS: { value: DevicePlacement; label: string }[] = [
+  { value: 'wall', label: 'Wall' },
+  { value: 'ceiling', label: 'Ceiling' },
+  { value: 'floor', label: 'Floor' },
+];
+
+const COMMON_HEIGHTS = [
+  { value: 12, label: '12" (Floor)' },
+  { value: 18, label: '18" (Outlet)' },
+  { value: 48, label: '48" (Counter)' },
+  { value: 52, label: '52" (Switch)' },
+  { value: 96, label: '96" (Ceiling)' },
+];
 
 const DEVICE_TYPES = [
   { value: 'outlet', label: 'Outlet', subtypes: ['standard', 'gfci', 'usb', '20a', 'dedicated'] },
@@ -40,6 +54,8 @@ interface DeviceFormWithRoomSelectProps {
     type: string;
     subtype?: string;
     description: string;
+    placement?: DevicePlacement;
+    heightFromFloor?: number;
     estimatedWattage?: number;
     isGfciProtected?: boolean;
     notes?: string;
@@ -59,6 +75,8 @@ export function DeviceFormWithRoomSelect({
   const [type, setType] = useState('outlet');
   const [subtype, setSubtype] = useState('');
   const [description, setDescription] = useState('');
+  const [placement, setPlacement] = useState<DevicePlacement>('wall');
+  const [heightFromFloor, setHeightFromFloor] = useState<number | undefined>(undefined);
   const [estimatedWattage, setEstimatedWattage] = useState<number | undefined>(undefined);
   const [isGfciProtected, setIsGfciProtected] = useState(false);
   const [notes, setNotes] = useState('');
@@ -92,6 +110,8 @@ export function DeviceFormWithRoomSelect({
       type,
       subtype: subtype || undefined,
       description,
+      placement,
+      heightFromFloor,
       estimatedWattage,
       isGfciProtected,
       notes: notes || undefined,
@@ -155,23 +175,98 @@ export function DeviceFormWithRoomSelect({
               </Select>
             </div>
 
-            {subtypes.length > 0 && (
-              <div className="space-y-2">
-                <Label htmlFor="subtype">Subtype</Label>
-                <Select value={subtype} onValueChange={setSubtype}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select..." />
+            <div className="space-y-2">
+              <Label htmlFor="subtype">Subtype</Label>
+              <div className="flex gap-2">
+                {subtypes.length > 0 ? (
+                  <>
+                    <Select value={subtypes.includes(subtype) ? subtype : '__custom__'} onValueChange={(v) => {
+                      if (v === '__custom__') {
+                        setSubtype('');
+                      } else {
+                        setSubtype(v);
+                      }
+                    }}>
+                      <SelectTrigger className="flex-1">
+                        <SelectValue placeholder="Select..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {subtypes.map((st) => (
+                          <SelectItem key={st} value={st}>
+                            {st.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
+                          </SelectItem>
+                        ))}
+                        <SelectItem value="__custom__">Custom...</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {!subtypes.includes(subtype) && (
+                      <Input
+                        placeholder="Custom"
+                        value={subtype}
+                        onChange={(e) => setSubtype(e.target.value)}
+                        className="flex-1"
+                      />
+                    )}
+                  </>
+                ) : (
+                  <Input
+                    value={subtype}
+                    onChange={(e) => setSubtype(e.target.value)}
+                    placeholder="Optional"
+                    className="flex-1"
+                  />
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Placement and Height */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="placement">Placement</Label>
+              <Select value={placement} onValueChange={(v) => setPlacement(v as DevicePlacement)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PLACEMENT_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="heightFromFloor">Height (inches)</Label>
+              <div className="flex gap-2">
+                <Input
+                  type="number"
+                  min={0}
+                  max={240}
+                  value={heightFromFloor ?? ''}
+                  onChange={(e) => setHeightFromFloor(e.target.value ? parseInt(e.target.value) : undefined)}
+                  placeholder="e.g., 48"
+                  className="flex-1"
+                />
+                <Select
+                  value={heightFromFloor?.toString() ?? ''}
+                  onValueChange={(v) => setHeightFromFloor(v ? parseInt(v) : undefined)}
+                >
+                  <SelectTrigger className="w-[100px]">
+                    <SelectValue placeholder="Quick" />
                   </SelectTrigger>
                   <SelectContent>
-                    {subtypes.map((st) => (
-                      <SelectItem key={st} value={st}>
-                        {st.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
+                    {COMMON_HEIGHTS.map((h) => (
+                      <SelectItem key={h.value} value={h.value.toString()}>
+                        {h.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-            )}
+            </div>
           </div>
 
           <div className="space-y-2">

@@ -138,6 +138,22 @@ export interface UpdateFloorPlanImageInput {
 // Circuit tracing highlight modes
 export type HighlightMode = 'none' | 'breaker' | 'device' | 'circuit';
 
+// 3D View modes
+export type ViewMode = '2d' | '3d' | 'elevation';
+
+// 3D camera presets
+export type CameraPreset = 'isometric' | 'top' | 'front' | 'side' | 'free';
+
+// 3D view settings
+export interface ThreeDSettings {
+  showAllFloors: boolean;
+  floorSpacing: number; // Vertical gap in feet (default 3)
+  cameraPreset: CameraPreset;
+  showWireRouting: boolean;
+  animateWires: boolean;
+  ceilingHeight: number; // Default 8 feet
+}
+
 // Helper to calculate wall length
 export function getWallLength(wall: Wall | { startX: number; startY: number; endX: number; endY: number }): number {
   const dx = wall.endX - wall.startX;

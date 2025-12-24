@@ -569,6 +569,9 @@ export default function PanelDetailPage() {
               onAddDevice={(breakerId) =>
                 setModalState({ type: 'createDeviceForBreaker', breakerId })
               }
+              onDeleteBreaker={(breaker) =>
+                setModalState({ type: 'deleteBreaker', breaker })
+              }
             />
           </div>
         </TabsContent>

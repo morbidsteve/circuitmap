@@ -22,6 +22,7 @@ import {
   Wind,
   Monitor,
   Refrigerator,
+  Trash2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -30,6 +31,7 @@ interface CircuitViewProps {
   onBreakerClick?: (breaker: Breaker) => void
   onDeviceClick?: (device: Device, roomId: string) => void
   onAddDevice?: (breakerId: string) => void
+  onDeleteBreaker?: (breaker: Breaker) => void
 }
 
 // Get icon for device type
@@ -102,7 +104,7 @@ interface BreakerWithDevices {
   totalWattage: number
 }
 
-export function CircuitView({ panel, onBreakerClick, onDeviceClick, onAddDevice }: CircuitViewProps) {
+export function CircuitView({ panel, onBreakerClick, onDeviceClick, onAddDevice, onDeleteBreaker }: CircuitViewProps) {
   const [expandedBreakers, setExpandedBreakers] = useState<Set<string>>(new Set())
 
   // Build a map of breaker -> devices grouped by room
@@ -262,6 +264,18 @@ export function CircuitView({ panel, onBreakerClick, onDeviceClick, onAddDevice 
                   title="Edit breaker"
                 >
                   <Edit className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onDeleteBreaker?.(breaker)
+                  }}
+                  title="Delete breaker"
+                >
+                  <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
             </div>

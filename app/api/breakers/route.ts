@@ -47,6 +47,57 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Panel not found' }, { status: 404 });
     }
 
+    // Check for duplicate positions
+    // For tandem breakers (ending in A or B), allow both A and B
+    // For regular breakers and multi-pole (like "2-4"), only one allowed
+    const position = result.data.position;
+    const isTandem = /^(\d+)[AB]$/i.test(position);
+
+    const existingBreaker = await prisma.breaker.findFirst({
+      where: {
+        panelId: result.data.panelId,
+        position: position,
+      },
+    });
+
+    if (existingBreaker) {
+      return NextResponse.json(
+        { error: `Position ${position} is already occupied by another breaker` },
+        { status: 400 }
+      );
+    }
+
+    // For non-tandem breakers, also check if trying to use a position that's part of a multi-pole
+    if (!isTandem) {
+      const basePosition = parseInt(position.split('-')[0]);
+      if (!isNaN(basePosition)) {
+        // Check if this position is already part of a multi-pole breaker
+        const conflictingMultiPole = await prisma.breaker.findFirst({
+          where: {
+            panelId: result.data.panelId,
+            position: {
+              contains: '-',
+            },
+          },
+        });
+
+        if (conflictingMultiPole) {
+          const [start, end] = conflictingMultiPole.position.split('-').map(Number);
+          if (!isNaN(start) && !isNaN(end)) {
+            // Check if new position falls within multi-pole range
+            for (let pos = start; pos <= end; pos += 2) {
+              if (pos === basePosition) {
+                return NextResponse.json(
+                  { error: `Position ${position} conflicts with multi-pole breaker at ${conflictingMultiPole.position}` },
+                  { status: 400 }
+                );
+              }
+            }
+          }
+        }
+      }
+    }
+
     const breaker = await prisma.breaker.create({
       data: result.data,
     });

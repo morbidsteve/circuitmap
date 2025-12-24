@@ -9,12 +9,18 @@ import { FloorPlanToolbar } from './FloorPlanToolbar'
 import { useUpdateRoom } from '@/hooks/useRooms'
 import { useUpdateDevice } from '@/hooks/useDevices'
 import { useWalls, useCreateManyWalls, useUpdateWall, useDeleteWall } from '@/hooks/useWalls'
-import { Home, MapPin } from 'lucide-react'
+import { Home, MapPin, Construction } from 'lucide-react'
 
 // Dynamic import for Konva (SSR incompatible)
 const FloorPlanCanvas = dynamic(
   () => import('./FloorPlanCanvas').then((mod) => mod.FloorPlanCanvas),
   { ssr: false, loading: () => <FloorPlanLoading /> }
+)
+
+// Dynamic import for Three.js (SSR incompatible)
+const ThreeCanvas = dynamic(
+  () => import('./3d/ThreeCanvas').then((mod) => mod.ThreeCanvas),
+  { ssr: false, loading: () => <ThreeCanvasLoading /> }
 )
 
 function FloorPlanLoading() {
@@ -23,6 +29,32 @@ function FloorPlanLoading() {
       <div className="text-center">
         <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-2" />
         <p className="text-sm text-muted-foreground">Loading floor plan...</p>
+      </div>
+    </div>
+  )
+}
+
+function ThreeCanvasLoading() {
+  return (
+    <div className="flex items-center justify-center h-[500px] bg-gradient-to-b from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 rounded-lg">
+      <div className="text-center">
+        <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-2" />
+        <p className="text-sm text-muted-foreground">Loading 3D view...</p>
+      </div>
+    </div>
+  )
+}
+
+function ElevationViewPlaceholder() {
+  return (
+    <div className="flex items-center justify-center h-[500px] bg-muted/30 rounded-lg">
+      <div className="text-center">
+        <Construction className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+        <h3 className="font-semibold mb-2">Elevation View Coming Soon</h3>
+        <p className="text-muted-foreground max-w-md">
+          The elevation view will show a side profile of your electrical devices on walls,
+          displaying their heights and positions.
+        </p>
       </div>
     </div>
   )
@@ -54,6 +86,7 @@ export function FloorPlanEditor({ floors, breakers, panelId }: FloorPlanEditorPr
     pendingWallUpdates,
     pendingWallDeletions,
     markSaved,
+    viewMode,
   } = useFloorPlanStore()
 
   // Fetch walls for selected floor
@@ -223,7 +256,7 @@ export function FloorPlanEditor({ floors, breakers, panelId }: FloorPlanEditorPr
       <Card>
         <CardContent className="p-2">
           <div ref={containerRef} className="relative min-h-[500px] h-[600px] bg-white rounded overflow-hidden">
-            {selectedFloor && (
+            {viewMode === '2d' && selectedFloor && (
               <FloorPlanCanvas
                 floor={selectedFloor}
                 breakers={breakers}
@@ -231,6 +264,16 @@ export function FloorPlanEditor({ floors, breakers, panelId }: FloorPlanEditorPr
                 width={canvasSize.width}
                 height={canvasSize.height}
               />
+            )}
+            {viewMode === '3d' && (
+              <ThreeCanvas
+                floors={floors}
+                breakers={breakers}
+                selectedFloorId={selectedFloorId}
+              />
+            )}
+            {viewMode === 'elevation' && (
+              <ElevationViewPlaceholder />
             )}
           </div>
         </CardContent>

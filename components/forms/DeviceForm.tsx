@@ -60,6 +60,8 @@ interface DeviceFormProps {
     description: string;
     placement: DevicePlacement;
     heightFromFloor?: number;
+    positionX?: number;
+    positionY?: number;
     estimatedWattage?: number;
     isGfciProtected?: boolean;
     notes?: string;
@@ -83,6 +85,8 @@ export function DeviceForm({
   const [breakerId, setBreakerId] = useState(device?.breakerId ?? '__none__');
   const [placement, setPlacement] = useState<DevicePlacement>(device?.placement ?? 'wall');
   const [heightFromFloor, setHeightFromFloor] = useState<number | undefined>(device?.heightFromFloor ?? undefined);
+  const [positionX, setPositionX] = useState<number | undefined>(device?.positionX ?? undefined);
+  const [positionY, setPositionY] = useState<number | undefined>(device?.positionY ?? undefined);
   const [estimatedWattage, setEstimatedWattage] = useState(device?.estimatedWattage ?? undefined);
   const [isGfciProtected, setIsGfciProtected] = useState(device?.isGfciProtected ?? false);
   const [notes, setNotes] = useState(device?.notes ?? '');
@@ -122,6 +126,8 @@ export function DeviceForm({
       description,
       placement,
       heightFromFloor,
+      positionX,
+      positionY,
       estimatedWattage,
       isGfciProtected,
       notes: notes || undefined,
@@ -227,6 +233,34 @@ export function DeviceForm({
               </SelectContent>
             </Select>
           </div>
+        </div>
+      </div>
+
+      {/* Position within room */}
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="positionX">Position X (feet from left wall)</Label>
+          <Input
+            id="positionX"
+            type="number"
+            min={0}
+            step={0.5}
+            value={positionX ?? ''}
+            onChange={(e) => setPositionX(e.target.value ? parseFloat(e.target.value) : undefined)}
+            placeholder="e.g., 3.5"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="positionY">Position Y (feet from top wall)</Label>
+          <Input
+            id="positionY"
+            type="number"
+            min={0}
+            step={0.5}
+            value={positionY ?? ''}
+            onChange={(e) => setPositionY(e.target.value ? parseFloat(e.target.value) : undefined)}
+            placeholder="e.g., 2.0"
+          />
         </div>
       </div>
 

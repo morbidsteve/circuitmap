@@ -15,6 +15,19 @@ interface BreakerSlotProps {
   onClick?: () => void;
 }
 
+// Helper to get effective poles count (use position format as fallback)
+const getEffectivePoles = (breaker: Breaker): number => {
+  if (breaker.poles && breaker.poles > 1) return breaker.poles;
+  if (breaker.position.includes('-')) {
+    const [start, end] = breaker.position.split('-').map(Number);
+    if (!isNaN(start) && !isNaN(end)) {
+      // Each side increments by 2, so (end - start) / 2 + 1 = slots taken
+      return Math.floor((end - start) / 2) + 1;
+    }
+  }
+  return 1;
+};
+
 const getCircuitTypeColor = (type: string) => {
   const colors: Record<string, string> = {
     general: 'bg-blue-500',
@@ -83,7 +96,8 @@ export function BreakerSlot({ breaker, position, side, isSelected, onClick }: Br
 
   const protectionIcon = getProtectionIcon(breaker.protectionType);
   const circuitColor = getCircuitTypeColor(breaker.circuitType);
-  const isDoubleOrTriple = breaker.poles > 1;
+  const effectivePoles = getEffectivePoles(breaker);
+  const isDoubleOrTriple = effectivePoles > 1;
 
   return (
     <div
@@ -105,7 +119,7 @@ export function BreakerSlot({ breaker, position, side, isSelected, onClick }: Br
           <>
             <span>{position}</span>
             <span className="text-xs text-white/60">-</span>
-            <span>{position + (breaker.poles - 1) * 2}</span>
+            <span>{position + (effectivePoles - 1) * 2}</span>
           </>
         ) : (
           position
@@ -157,8 +171,8 @@ export function BreakerSlot({ breaker, position, side, isSelected, onClick }: Br
           side === 'right' ? 'text-right' : 'text-left'
         )}>
           <div className="font-medium text-gray-800 truncate">{breaker.label}</div>
-          {breaker.poles > 1 && (
-            <div className="text-[10px] text-gray-500">{breaker.poles}-pole • 240V</div>
+          {effectivePoles > 1 && (
+            <div className="text-[10px] text-gray-500">{effectivePoles}-pole • 240V</div>
           )}
         </div>
 
@@ -210,7 +224,8 @@ export function DraggableBreakerSlot({
 
   const protectionIcon = getProtectionIcon(breaker.protectionType);
   const circuitColor = getCircuitTypeColor(breaker.circuitType);
-  const isDoubleOrTriple = breaker.poles > 1;
+  const effectivePoles = getEffectivePoles(breaker);
+  const isDoubleOrTriple = effectivePoles > 1;
 
   // Position number element
   const positionNumber = (
@@ -223,7 +238,7 @@ export function DraggableBreakerSlot({
         <>
           <span>{position}</span>
           <span className="text-xs text-white/60">-</span>
-          <span>{position + (breaker.poles - 1) * 2}</span>
+          <span>{position + (effectivePoles - 1) * 2}</span>
         </>
       ) : (
         position
@@ -305,8 +320,8 @@ export function DraggableBreakerSlot({
           side === 'left' ? 'pr-5' : 'pl-5' // Make room for drag handle
         )}>
           <div className="font-medium text-gray-800 truncate">{breaker.label}</div>
-          {breaker.poles > 1 && (
-            <div className="text-[10px] text-gray-500">{breaker.poles}-pole • 240V</div>
+          {effectivePoles > 1 && (
+            <div className="text-[10px] text-gray-500">{effectivePoles}-pole • 240V</div>
           )}
         </div>
 
@@ -354,6 +369,98 @@ export function DroppableSlot({ id, children }: DroppableSlotProps) {
       )}
     >
       {children}
+    </div>
+  );
+}
+
+// Tandem breaker slot - two breakers sharing one slot
+interface TandemBreakerSlotProps {
+  breakers: Breaker[];
+  position: number;
+  side: 'left' | 'right';
+  selectedBreakerId?: string;
+  activeId?: string | null;
+  onBreakerClick?: (breakerId: string) => void;
+}
+
+export function TandemBreakerSlot({
+  breakers,
+  position,
+  side,
+  selectedBreakerId,
+  onBreakerClick,
+}: TandemBreakerSlotProps) {
+  // Sort breakers by their suffix (A before B)
+  const sortedBreakers = [...breakers].sort((a, b) => {
+    const suffixA = a.position.match(/[ABab]$/)?.[0]?.toUpperCase() || '';
+    const suffixB = b.position.match(/[ABab]$/)?.[0]?.toUpperCase() || '';
+    return suffixA.localeCompare(suffixB);
+  });
+
+  return (
+    <div className={cn(
+      "h-12 mb-1 flex items-center",
+      side === 'left' ? 'flex-row' : 'flex-row-reverse'
+    )}>
+      {/* Position number */}
+      <div className={cn(
+        "w-6 flex-shrink-0 text-center font-mono text-sm font-bold",
+        "text-white/90 flex flex-col leading-tight"
+      )}>
+        <span className="text-[10px]">{position}A</span>
+        <span className="text-[10px]">{position}B</span>
+      </div>
+
+      {/* Tandem breaker body - split into two halves */}
+      <div className="flex-1 mx-1 flex flex-col gap-0.5">
+        {sortedBreakers.map((breaker, idx) => {
+          const isSelected = breaker.id === selectedBreakerId;
+          const circuitColor = getCircuitTypeColor(breaker.circuitType);
+
+          return (
+            <div
+              key={breaker.id}
+              className={cn(
+                "relative h-[22px] rounded shadow-sm cursor-pointer",
+                "border flex items-center px-1.5 gap-1",
+                side === 'right' && 'flex-row-reverse',
+                isSelected
+                  ? 'border-primary ring-1 ring-primary bg-primary/20'
+                  : 'border-gray-600 bg-gradient-to-b from-gray-200 to-gray-300',
+                breaker.isOn
+                  ? 'from-gray-200 to-gray-300'
+                  : 'from-gray-400 to-gray-500 opacity-70'
+              )}
+              onClick={() => onBreakerClick?.(breaker.id)}
+            >
+              {/* Circuit type color bar */}
+              <div
+                className={cn(
+                  "absolute top-0 w-1 h-full rounded-sm",
+                  side === 'left' ? 'left-0 rounded-l' : 'right-0 rounded-r',
+                  circuitColor
+                )}
+              />
+
+              {/* Amperage */}
+              <span className="text-xs font-bold text-gray-800 ml-1">{breaker.amperage}A</span>
+
+              {/* Label (truncated) */}
+              <span className={cn(
+                "flex-1 text-[9px] text-gray-700 truncate",
+                side === 'right' ? 'text-right mr-1' : 'text-left'
+              )}>
+                {breaker.label}
+              </span>
+
+              {/* Position suffix */}
+              <span className="text-[8px] text-gray-500 font-mono">
+                {breaker.position.slice(-1).toUpperCase()}
+              </span>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

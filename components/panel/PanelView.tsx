@@ -13,7 +13,7 @@ import {
   closestCenter,
 } from '@dnd-kit/core';
 import { Breaker } from '@/types/panel';
-import { BreakerSlot, DraggableBreakerSlot, DroppableSlot } from './BreakerSlot';
+import { BreakerSlot, DraggableBreakerSlot, DroppableSlot, TandemBreakerSlot } from './BreakerSlot';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface PanelViewProps {
@@ -48,8 +48,10 @@ export function PanelView({
 
   // Group breakers by their position (odd = left, even = right)
   // Use 'skip' to mark slots covered by multi-pole breakers above
-  const leftBreakers: (Breaker | 'skip' | undefined)[] = [];
-  const rightBreakers: (Breaker | 'skip' | undefined)[] = [];
+  // Tandem breakers (e.g., "1A", "1B") share a single slot
+  type SlotContent = Breaker | Breaker[] | 'skip' | undefined;
+  const leftBreakers: SlotContent[] = [];
+  const rightBreakers: SlotContent[] = [];
 
   // Create a map of position to breaker for easy lookup
   const breakerMap = new Map<string, Breaker>();
@@ -57,10 +59,38 @@ export function PanelView({
     breakerMap.set(breaker.position, breaker);
   });
 
+  // Group tandem breakers by their base slot number
+  // e.g., "1A" and "1B" -> slot 1, "3A" and "3B" -> slot 3
+  const tandemGroups = new Map<number, Breaker[]>();
+  breakers.forEach((breaker) => {
+    const match = breaker.position.match(/^(\d+)([ABab])$/);
+    if (match) {
+      const slotNum = parseInt(match[1]);
+      if (!tandemGroups.has(slotNum)) {
+        tandemGroups.set(slotNum, []);
+      }
+      tandemGroups.get(slotNum)!.push(breaker);
+    }
+  });
+
+  // Helper to get effective poles count (use position format as fallback)
+  const getEffectivePoles = (breaker: Breaker): number => {
+    if (breaker.poles && breaker.poles > 1) return breaker.poles;
+    if (breaker.position.includes('-')) {
+      const [start, end] = breaker.position.split('-').map(Number);
+      if (!isNaN(start) && !isNaN(end)) {
+        // Each side increments by 2, so (end - start) / 2 + 1 = slots taken
+        return Math.floor((end - start) / 2) + 1;
+      }
+    }
+    return 1;
+  };
+
   // Build a set of all positions occupied by multi-pole breakers
   const occupiedPositions = new Set<number>();
   breakers.forEach((breaker) => {
-    if (breaker.poles > 1 && breaker.position.includes('-')) {
+    const effectivePoles = getEffectivePoles(breaker);
+    if (effectivePoles > 1 && breaker.position.includes('-')) {
       const [start, end] = breaker.position.split('-').map(Number);
       // Multi-pole breakers on same side span odd-odd or even-even positions
       // e.g., 1-3 covers positions 1 and 3, 2-4 covers 2 and 4
@@ -78,28 +108,38 @@ export function PanelView({
     const rightPos = i * 2;
 
     // Check for breakers at this position
-    let leftBreaker: Breaker | 'skip' | undefined = breakerMap.get(leftPos.toString());
-    let rightBreaker: Breaker | 'skip' | undefined = breakerMap.get(rightPos.toString());
+    let leftSlot: SlotContent = breakerMap.get(leftPos.toString());
+    let rightSlot: SlotContent = breakerMap.get(rightPos.toString());
+
+    // Check for tandem breakers (e.g., "1A", "1B" for slot 1)
+    if (!leftSlot && tandemGroups.has(leftPos)) {
+      const tandems = tandemGroups.get(leftPos)!;
+      leftSlot = tandems.length === 1 ? tandems[0] : tandems;
+    }
+    if (!rightSlot && tandemGroups.has(rightPos)) {
+      const tandems = tandemGroups.get(rightPos)!;
+      rightSlot = tandems.length === 1 ? tandems[0] : tandems;
+    }
 
     // Check for range positions like "1-3" or "2-4" that START at this position
-    if (!leftBreaker) {
+    if (!leftSlot) {
       for (const [pos, breaker] of breakerMap.entries()) {
         if (pos.includes('-')) {
           const startPos = parseInt(pos.split('-')[0]);
           if (startPos === leftPos) {
-            leftBreaker = breaker;
+            leftSlot = breaker;
             break;
           }
         }
       }
     }
 
-    if (!rightBreaker) {
+    if (!rightSlot) {
       for (const [pos, breaker] of breakerMap.entries()) {
         if (pos.includes('-')) {
           const startPos = parseInt(pos.split('-')[0]);
           if (startPos === rightPos) {
-            rightBreaker = breaker;
+            rightSlot = breaker;
             break;
           }
         }
@@ -107,15 +147,15 @@ export function PanelView({
     }
 
     // If this position is occupied by a multi-pole breaker from above, mark as skip
-    if (!leftBreaker && occupiedPositions.has(leftPos)) {
-      leftBreaker = 'skip';
+    if (!leftSlot && occupiedPositions.has(leftPos)) {
+      leftSlot = 'skip';
     }
-    if (!rightBreaker && occupiedPositions.has(rightPos)) {
-      rightBreaker = 'skip';
+    if (!rightSlot && occupiedPositions.has(rightPos)) {
+      rightSlot = 'skip';
     }
 
-    leftBreakers.push(leftBreaker);
-    rightBreakers.push(rightBreaker);
+    leftBreakers.push(leftSlot);
+    rightBreakers.push(rightSlot);
   }
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -179,22 +219,39 @@ export function PanelView({
           <div className="flex gap-2">
             {/* Left column (odd positions) */}
             <div className="flex-1">
-              {leftBreakers.map((breaker, index) => {
+              {leftBreakers.map((slot, index) => {
                 const pos = (index * 2 + 1).toString();
                 // Skip slots occupied by multi-pole breakers above
-                if (breaker === 'skip') {
+                if (slot === 'skip') {
                   return null;
                 }
-                return (
-                  <DroppableSlot key={`left-${index}`} id={pos}>
-                    {breaker ? (
-                      <DraggableBreakerSlot
-                        breaker={breaker}
+
+                // Handle tandem breakers (array of 2 breakers in one slot)
+                if (Array.isArray(slot)) {
+                  return (
+                    <DroppableSlot key={`left-${index}`} id={pos}>
+                      <TandemBreakerSlot
+                        breakers={slot}
                         position={index * 2 + 1}
                         side="left"
-                        isSelected={breaker.id === selectedBreakerId}
-                        isDragging={activeId === breaker.id}
-                        onClick={() => onBreakerClick?.(breaker.id)}
+                        selectedBreakerId={selectedBreakerId}
+                        activeId={activeId}
+                        onBreakerClick={onBreakerClick}
+                      />
+                    </DroppableSlot>
+                  );
+                }
+
+                return (
+                  <DroppableSlot key={`left-${index}`} id={pos}>
+                    {slot ? (
+                      <DraggableBreakerSlot
+                        breaker={slot}
+                        position={index * 2 + 1}
+                        side="left"
+                        isSelected={slot.id === selectedBreakerId}
+                        isDragging={activeId === slot.id}
+                        onClick={() => onBreakerClick?.(slot.id)}
                       />
                     ) : (
                       <BreakerSlot
@@ -217,22 +274,39 @@ export function PanelView({
 
             {/* Right column (even positions) */}
             <div className="flex-1">
-              {rightBreakers.map((breaker, index) => {
+              {rightBreakers.map((slot, index) => {
                 const pos = (index * 2 + 2).toString();
                 // Skip slots occupied by multi-pole breakers above
-                if (breaker === 'skip') {
+                if (slot === 'skip') {
                   return null;
                 }
-                return (
-                  <DroppableSlot key={`right-${index}`} id={pos}>
-                    {breaker ? (
-                      <DraggableBreakerSlot
-                        breaker={breaker}
+
+                // Handle tandem breakers (array of 2 breakers in one slot)
+                if (Array.isArray(slot)) {
+                  return (
+                    <DroppableSlot key={`right-${index}`} id={pos}>
+                      <TandemBreakerSlot
+                        breakers={slot}
                         position={index * 2 + 2}
                         side="right"
-                        isSelected={breaker.id === selectedBreakerId}
-                        isDragging={activeId === breaker.id}
-                        onClick={() => onBreakerClick?.(breaker.id)}
+                        selectedBreakerId={selectedBreakerId}
+                        activeId={activeId}
+                        onBreakerClick={onBreakerClick}
+                      />
+                    </DroppableSlot>
+                  );
+                }
+
+                return (
+                  <DroppableSlot key={`right-${index}`} id={pos}>
+                    {slot ? (
+                      <DraggableBreakerSlot
+                        breaker={slot}
+                        position={index * 2 + 2}
+                        side="right"
+                        isSelected={slot.id === selectedBreakerId}
+                        isDragging={activeId === slot.id}
+                        onClick={() => onBreakerClick?.(slot.id)}
                       />
                     ) : (
                       <BreakerSlot

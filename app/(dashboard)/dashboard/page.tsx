@@ -1,11 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
   Dialog,
   DialogContent,
@@ -15,7 +17,8 @@ import {
 } from '@/components/ui/dialog'
 import { PanelForm } from '@/components/forms/PanelForm'
 import { usePanels, useCreatePanel, useDeletePanel } from '@/hooks/usePanels'
-import { Plus, Zap, MapPin, Layers, Trash2, MoreVertical } from 'lucide-react'
+import { Plus, Zap, MapPin, Layers, Trash2, MoreVertical, Upload } from 'lucide-react'
+import { useQueryClient } from '@tanstack/react-query'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,12 +38,53 @@ import {
 
 export default function DashboardPage() {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const { data: panels, isLoading } = usePanels()
   const createPanel = useCreatePanel()
   const deletePanel = useDeletePanel()
 
   const [isCreateOpen, setIsCreateOpen] = useState(false)
+  const [isImportOpen, setIsImportOpen] = useState(false)
+  const [isImporting, setIsImporting] = useState(false)
+  const [importError, setImportError] = useState<string | null>(null)
   const [deleteId, setDeleteId] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setIsImporting(true)
+    setImportError(null)
+
+    try {
+      const text = await file.text()
+      const data = JSON.parse(text)
+
+      const response = await fetch('/api/panels/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to import')
+      }
+
+      const result = await response.json()
+      queryClient.invalidateQueries({ queryKey: ['panels'] })
+      setIsImportOpen(false)
+      router.push(`/dashboard/panels/${result.panelId}`)
+    } catch (error) {
+      setImportError(error instanceof Error ? error.message : 'Failed to import panel')
+    } finally {
+      setIsImporting(false)
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+    }
+  }
 
   const handleCreatePanel = async (data: {
     name: string
@@ -107,10 +151,16 @@ export default function DashboardPage() {
             Manage your electrical panel mappings
           </p>
         </div>
-        <Button onClick={() => setIsCreateOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Panel
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setIsImportOpen(true)}>
+            <Upload className="h-4 w-4 mr-2" />
+            Import
+          </Button>
+          <Button onClick={() => setIsCreateOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Panel
+          </Button>
+        </div>
       </div>
 
       {!panels || panels.length === 0 ? (
@@ -247,6 +297,46 @@ export default function DashboardPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Import Panel Dialog */}
+      <Dialog open={isImportOpen} onOpenChange={setIsImportOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Import Panel</DialogTitle>
+            <DialogDescription>
+              Upload a CircuitMap export file to restore a panel backup.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="import-file">Select backup file</Label>
+              <Input
+                ref={fileInputRef}
+                id="import-file"
+                type="file"
+                accept=".json"
+                onChange={handleImportFile}
+                disabled={isImporting}
+              />
+              <p className="text-xs text-muted-foreground">
+                Only .json files exported from CircuitMap are supported
+              </p>
+            </div>
+
+            {importError && (
+              <div className="p-3 bg-destructive/10 text-destructive rounded-md text-sm">
+                {importError}
+              </div>
+            )}
+
+            {isImporting && (
+              <div className="text-sm text-muted-foreground text-center">
+                Importing panel...
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

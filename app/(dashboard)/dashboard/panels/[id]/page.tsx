@@ -55,6 +55,7 @@ import {
   X,
   List,
   Map,
+  Download,
 } from 'lucide-react'
 import {
   DropdownMenu,
@@ -207,6 +208,17 @@ export default function PanelDetailPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              // Download export file
+              window.location.href = `/api/panels/${panelId}/export`;
+            }}
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Export
+          </Button>
           <Button variant="outline" size="sm" onClick={() => setModalState({ type: 'editPanel' })}>
             <Edit className="h-4 w-4 mr-2" />
             Edit

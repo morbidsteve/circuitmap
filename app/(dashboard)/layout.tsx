@@ -133,14 +133,40 @@ export default function DashboardLayout({
             <Link href="/dashboard" className="hover:text-foreground">
               Dashboard
             </Link>
-            {pathname !== '/dashboard' && (
-              <>
-                <ChevronRight className="h-4 w-4 mx-1" />
-                <span className="text-foreground">
-                  {pathname.split('/').pop()?.replace(/-/g, ' ')}
+            {pathname !== '/dashboard' && (() => {
+              const segments = pathname.split('/').filter(Boolean).slice(1) // Remove 'dashboard'
+
+              // Build breadcrumb parts
+              const parts: { label: string; href?: string }[] = []
+
+              if (segments[0] === 'panels') {
+                parts.push({ label: 'Panels', href: '/dashboard' })
+                // If there's a panel ID (UUID or similar), we show "Panel Details"
+                // The actual panel name is shown in the page header
+                if (segments[1]) {
+                  parts.push({ label: 'Panel Details' })
+                }
+              } else if (segments[0] === 'billing') {
+                parts.push({ label: 'Billing' })
+              } else if (segments[0] === 'settings') {
+                parts.push({ label: 'Settings' })
+              } else {
+                parts.push({ label: segments[0]?.replace(/-/g, ' ') || '' })
+              }
+
+              return parts.map((part, i) => (
+                <span key={i} className="flex items-center">
+                  <ChevronRight className="h-4 w-4 mx-1" />
+                  {part.href ? (
+                    <Link href={part.href} className="hover:text-foreground">
+                      {part.label}
+                    </Link>
+                  ) : (
+                    <span className="text-foreground capitalize">{part.label}</span>
+                  )}
                 </span>
-              </>
-            )}
+              ))
+            })()}
           </div>
         </header>
 

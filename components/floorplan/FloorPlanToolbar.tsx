@@ -76,24 +76,56 @@ export function FloorPlanToolbar({ floors, breakers, onSave, onUploadImage, isSa
     setPanOffset({ x: 0, y: 0 })
   }
 
+  // Get floor color based on level
+  const getFloorColor = (level: number) => {
+    const colors = [
+      { bg: 'bg-slate-500', text: 'text-white', name: 'Basement' },     // -1 or 0
+      { bg: 'bg-emerald-500', text: 'text-white', name: '1st Floor' },  // 1
+      { bg: 'bg-blue-500', text: 'text-white', name: '2nd Floor' },     // 2
+      { bg: 'bg-purple-500', text: 'text-white', name: '3rd Floor' },   // 3
+      { bg: 'bg-orange-500', text: 'text-white', name: '4th Floor' },   // 4+
+    ]
+    if (level <= 0) return colors[0]
+    if (level >= colors.length) return colors[colors.length - 1]
+    return colors[level]
+  }
+
+  const selectedFloor = floors.find(f => f.id === selectedFloorId)
+  const floorColor = selectedFloor ? getFloorColor(selectedFloor.level) : null
+
   return (
     <div className="flex items-center gap-4 p-2 bg-muted/50 rounded-lg flex-wrap">
-      {/* Floor Selector */}
+      {/* Floor Selector with color indicator */}
       <div className="flex items-center gap-2">
-        <span className="text-sm font-medium text-muted-foreground">Floor:</span>
+        {floorColor && (
+          <div className={cn(
+            'w-8 h-8 rounded-md flex items-center justify-center font-bold text-sm',
+            floorColor.bg,
+            floorColor.text
+          )}>
+            {selectedFloor?.level ?? '?'}
+          </div>
+        )}
         <Select
           value={selectedFloorId ?? ''}
           onValueChange={(value) => setSelectedFloorId(value || null)}
         >
-          <SelectTrigger className="w-40">
+          <SelectTrigger className="w-48">
             <SelectValue placeholder="Select floor..." />
           </SelectTrigger>
           <SelectContent>
-            {floors.map((floor) => (
-              <SelectItem key={floor.id} value={floor.id}>
-                {floor.name} (Level {floor.level})
-              </SelectItem>
-            ))}
+            {floors.sort((a, b) => b.level - a.level).map((floor) => {
+              const color = getFloorColor(floor.level)
+              return (
+                <SelectItem key={floor.id} value={floor.id}>
+                  <div className="flex items-center gap-2">
+                    <div className={cn('w-4 h-4 rounded', color.bg)} />
+                    <span>{floor.name}</span>
+                    <span className="text-muted-foreground text-xs">(L{floor.level})</span>
+                  </div>
+                </SelectItem>
+              )
+            })}
           </SelectContent>
         </Select>
       </div>

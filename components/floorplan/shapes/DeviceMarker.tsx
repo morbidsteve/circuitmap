@@ -1,5 +1,6 @@
 'use client'
 
+import { useRef, useEffect } from 'react'
 import { Circle, Group, Text, Rect } from 'react-konva'
 import Konva from 'konva'
 import { Device, Breaker, RoomWithDevices } from '@/types/panel'
@@ -15,7 +16,9 @@ interface DeviceMarkerProps {
   roomOffsetY: number
   isSelected: boolean
   isHighlighted: boolean
+  isPulsingHighlight?: boolean // New: for animated highlighting
   onSelect: () => void
+  onDeviceClick?: (deviceId: string, breakerId: string | undefined) => void
 }
 
 const DEVICE_LABELS: Record<string, string> = {
@@ -50,6 +53,13 @@ const DEVICE_ICONS: Record<string, string> = {
   other: '📍',
 }
 
+// Placement indicator symbols
+const PLACEMENT_INDICATORS: Record<string, { symbol: string; color: string }> = {
+  wall: { symbol: '║', color: '#6366F1' },    // Purple/indigo for wall
+  ceiling: { symbol: '△', color: '#F59E0B' }, // Amber for ceiling
+  floor: { symbol: '▬', color: '#10B981' },   // Green for floor
+}
+
 export function DeviceMarker({
   device,
   room,
@@ -59,11 +69,31 @@ export function DeviceMarker({
   roomOffsetY,
   isSelected,
   isHighlighted,
+  isPulsingHighlight = false,
   onSelect,
+  onDeviceClick,
 }: DeviceMarkerProps) {
-  const { getDeviceWithUpdates, updateDevicePosition } = useFloorPlanStore()
+  const groupRef = useRef<Konva.Group>(null)
+  const pulseRef = useRef<Konva.Circle>(null)
+  const { getDeviceWithUpdates, updateDevicePosition, highlightDevice } = useFloorPlanStore()
 
   const displayDevice = getDeviceWithUpdates(device)
+
+  // Pulsing animation for highlighted devices
+  useEffect(() => {
+    if (!isPulsingHighlight || !pulseRef.current) return undefined
+
+    const anim = new Konva.Animation((frame) => {
+      if (!frame || !pulseRef.current) return
+      const scale = 1 + Math.sin(frame.time / 200) * 0.15
+      const opacity = 0.6 + Math.sin(frame.time / 200) * 0.3
+      pulseRef.current.scale({ x: scale, y: scale })
+      pulseRef.current.opacity(opacity)
+    }, pulseRef.current.getLayer())
+
+    anim.start()
+    return () => { anim.stop() }
+  }, [isPulsingHighlight])
 
   // Position device within room - distribute evenly if no position set
   const roomDevices = room.devices
@@ -100,16 +130,37 @@ export function DeviceMarker({
   const radius = 16
   const label = device.description || DEVICE_LABELS[device.type] || 'Device'
 
+  // Handle click to highlight circuit
+  const handleClick = () => {
+    onSelect()
+    if (onDeviceClick) {
+      onDeviceClick(device.id, device.breakerId)
+    }
+  }
+
   return (
     <Group
+      ref={groupRef}
       x={deviceX}
       y={deviceY}
       opacity={opacity}
-      onClick={onSelect}
-      onTap={onSelect}
+      onClick={handleClick}
+      onTap={handleClick}
       draggable
       onDragEnd={handleDragEnd}
     >
+      {/* Pulsing highlight ring for circuit tracing */}
+      {isPulsingHighlight && (
+        <Circle
+          ref={pulseRef}
+          radius={radius + 10}
+          stroke={colors.fill}
+          strokeWidth={3}
+          fill="transparent"
+          opacity={0.6}
+        />
+      )}
+
       {/* Selection ring */}
       {isSelected && (
         <Circle
@@ -120,16 +171,27 @@ export function DeviceMarker({
         />
       )}
 
+      {/* Glow effect for highlighted devices */}
+      {isHighlighted && !isSelected && (
+        <Circle
+          radius={radius + 4}
+          fill="transparent"
+          shadowColor={colors.fill}
+          shadowBlur={12}
+          shadowOpacity={0.8}
+        />
+      )}
+
       {/* Main circle */}
       <Circle
         radius={radius}
         fill={colors.fill}
         stroke={isUnassigned ? '#9CA3AF' : colors.stroke}
-        strokeWidth={2}
+        strokeWidth={isHighlighted ? 3 : 2}
         dash={isUnassigned ? [4, 4] : undefined}
         shadowColor="black"
-        shadowBlur={4}
-        shadowOpacity={0.2}
+        shadowBlur={isHighlighted ? 8 : 4}
+        shadowOpacity={isHighlighted ? 0.4 : 0.2}
         shadowOffsetY={2}
       />
 
@@ -190,6 +252,44 @@ export function DeviceMarker({
           text="(unassigned)"
           fontSize={8}
           fill="#EF4444"
+          align="center"
+          listening={false}
+        />
+      )}
+
+      {/* Placement indicator badge (top-right corner) */}
+      {displayDevice.placement && PLACEMENT_INDICATORS[displayDevice.placement] && (
+        <Group x={radius - 4} y={-radius - 4}>
+          <Circle
+            radius={8}
+            fill={PLACEMENT_INDICATORS[displayDevice.placement].color}
+            stroke="#FFFFFF"
+            strokeWidth={1.5}
+            shadowColor="black"
+            shadowBlur={2}
+            shadowOpacity={0.3}
+          />
+          <Text
+            x={-4}
+            y={-5}
+            text={PLACEMENT_INDICATORS[displayDevice.placement].symbol}
+            fontSize={9}
+            fill="#FFFFFF"
+            fontStyle="bold"
+            listening={false}
+          />
+        </Group>
+      )}
+
+      {/* Height indicator (shown when selected) */}
+      {isSelected && displayDevice.heightFromFloor && (
+        <Text
+          x={-40}
+          y={-radius - 18}
+          width={80}
+          text={`${displayDevice.heightFromFloor}" from floor`}
+          fontSize={9}
+          fill="#64748B"
           align="center"
           listening={false}
         />

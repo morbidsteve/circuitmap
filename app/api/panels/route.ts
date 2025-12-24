@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { z } from 'zod';
+import { SUBSCRIPTION_TIERS, SubscriptionTier } from '@/lib/stripe';
 
 export const dynamic = 'force-dynamic';
 
@@ -65,6 +66,31 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
+      );
+    }
+
+    // Check subscription limits
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { subscriptionTier: true },
+    });
+
+    const tier = (user?.subscriptionTier || 'free') as SubscriptionTier;
+    const tierConfig = SUBSCRIPTION_TIERS[tier];
+
+    // Count existing panels
+    const panelCount = await prisma.panel.count({
+      where: { userId: session.user.id },
+    });
+
+    if (panelCount >= tierConfig.maxPanels) {
+      return NextResponse.json(
+        {
+          error: `Panel limit reached. ${tier === 'free' ? 'Upgrade to Pro for unlimited panels.' : 'You have reached your plan limit.'}`,
+          code: 'LIMIT_REACHED',
+          upgradeRequired: tier === 'free',
+        },
+        { status: 403 }
       );
     }
 

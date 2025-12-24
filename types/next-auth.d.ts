@@ -7,6 +7,18 @@ declare module "next-auth" {
       email: string;
       name?: string | null;
       image?: string | null;
+      subscriptionTier: string;
     };
+  }
+
+  interface User {
+    subscriptionTier?: string;
+  }
+}
+
+declare module "next-auth/jwt" {
+  interface JWT {
+    id: string;
+    subscriptionTier: string;
   }
 }

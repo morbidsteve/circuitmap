@@ -1,3 +1,5 @@
+import type { WallWithOpenings, FloorPlanImage } from './floorplan';
+
 export interface Panel {
   id: string;
   userId: string;
@@ -48,6 +50,8 @@ export interface Room {
   createdAt: Date;
 }
 
+export type DevicePlacement = 'floor' | 'wall' | 'ceiling';
+
 export interface Device {
   id: string;
   roomId: string;
@@ -57,6 +61,8 @@ export interface Device {
   description: string;
   positionX?: number;
   positionY?: number;
+  placement: DevicePlacement;
+  heightFromFloor?: number; // Height in inches from floor
   estimatedWattage?: number;
   isGfciProtected: boolean;
   notes?: string;
@@ -70,6 +76,8 @@ export interface RoomWithDevices extends Room {
 
 export interface FloorWithRooms extends Floor {
   rooms: RoomWithDevices[];
+  walls?: WallWithOpenings[];
+  floorPlanImage?: FloorPlanImage | null;
 }
 
 export interface PanelWithRelations extends Panel {

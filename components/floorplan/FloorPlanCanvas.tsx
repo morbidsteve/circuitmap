@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useEffect, useState, useMemo } from 'react'
+import { useRef, useEffect, useState, useMemo, useCallback } from 'react'
 import { Stage, Layer, Rect, Line, Text, Group } from 'react-konva'
 import Konva from 'konva'
 import { FloorWithRooms, Breaker, RoomWithDevices, Device } from '@/types/panel'
@@ -8,10 +8,13 @@ import { useFloorPlanStore } from '@/stores/floorPlanStore'
 import { RoomShape } from './shapes/RoomShape'
 import { DeviceMarker } from './shapes/DeviceMarker'
 import { WireConnection } from './shapes/WireConnection'
+import { WallShape, WallDrawingLayer } from './builder'
+import type { WallWithOpenings } from '@/types/floorplan'
 
 interface FloorPlanCanvasProps {
   floor: FloorWithRooms
   breakers: Breaker[]
+  walls?: WallWithOpenings[]
   width: number
   height: number
 }
@@ -21,7 +24,7 @@ const SCALE = 20
 const GRID_SIZE_FEET = 5 // Grid every 5 feet
 const PADDING = 100 // Padding around content
 
-export function FloorPlanCanvas({ floor, breakers, width, height }: FloorPlanCanvasProps) {
+export function FloorPlanCanvas({ floor, breakers, walls = [], width, height }: FloorPlanCanvasProps) {
   const stageRef = useRef<Konva.Stage>(null)
   // Ensure minimum canvas size
   const [stageSize, setStageSize] = useState({
@@ -38,11 +41,19 @@ export function FloorPlanCanvas({ floor, breakers, width, height }: FloorPlanCan
     showWires,
     selectedRoomId,
     selectedDeviceId,
+    selectedWallId,
     highlightedBreakerId,
     selectRoom,
     selectDevice,
+    selectWall,
+    clearSelection,
     activeTool,
     getRoomWithUpdates,
+    startWallDrawing,
+    updateWallPreview,
+    finishWallSegment,
+    cancelWallDrawing,
+    wallDrawingState,
   } = useFloorPlanStore()
 
   // Update stage size when container resizes
@@ -180,23 +191,135 @@ export function FloorPlanCanvas({ floor, breakers, width, height }: FloorPlanCan
     setPanOffset(newPos)
   }
 
-  // Handle stage click to deselect
+  // Convert stage position to floor plan coordinates (in feet)
+  const stageToFloorPlan = useCallback((stageX: number, stageY: number) => {
+    return {
+      x: (stageX - panOffset.x) / zoom / SCALE,
+      y: (stageY - panOffset.y) / zoom / SCALE,
+    }
+  }, [panOffset, zoom])
+
+  // Handle stage click
   const handleStageClick = (e: Konva.KonvaEventObject<MouseEvent>) => {
-    if (e.target === e.target.getStage()) {
-      selectRoom(null)
-      selectDevice(null)
+    const stage = stageRef.current
+    if (!stage) return
+
+    // Only handle clicks on the stage background
+    if (e.target !== stage) return
+
+    const pointer = stage.getPointerPosition()
+    if (!pointer) return
+
+    const point = stageToFloorPlan(pointer.x, pointer.y)
+
+    if (activeTool === 'wall') {
+      if (!wallDrawingState.isDrawing) {
+        // Start a new wall
+        startWallDrawing(point)
+      } else {
+        // Finish current wall segment and start next
+        finishWallSegment()
+      }
+    } else {
+      // Deselect when clicking on empty space
+      clearSelection()
     }
   }
 
-  // Determine if a device should be highlighted
-  const shouldHighlightDevice = (device: Device) => {
-    if (!highlightedBreakerId) return true
-    return device.breakerId === highlightedBreakerId
+  // Handle mouse move for wall preview
+  const handleMouseMove = (e: Konva.KonvaEventObject<MouseEvent>) => {
+    if (activeTool !== 'wall' || !wallDrawingState.isDrawing) return
+
+    const stage = stageRef.current
+    if (!stage) return
+
+    const pointer = stage.getPointerPosition()
+    if (!pointer) return
+
+    const point = stageToFloorPlan(pointer.x, pointer.y)
+    updateWallPreview(point)
   }
+
+  // Handle double-click to finish wall chain
+  const handleDoubleClick = (e: Konva.KonvaEventObject<MouseEvent>) => {
+    if (activeTool === 'wall' && wallDrawingState.isDrawing) {
+      cancelWallDrawing()
+    }
+  }
+
+  // Handle Escape key to cancel wall drawing
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && wallDrawingState.isDrawing) {
+        cancelWallDrawing()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [wallDrawingState.isDrawing, cancelWallDrawing])
+
+  // Get highlighting state from store
+  const {
+    highlightMode,
+    highlightedDeviceId,
+    highlightedCircuitDeviceIds,
+    highlightBreaker,
+    highlightDevice,
+  } = useFloorPlanStore()
+
+  // Determine if a device should be highlighted based on current mode
+  const shouldHighlightDevice = (device: Device) => {
+    if (highlightMode === 'none') return true
+    if (highlightMode === 'breaker' && highlightedBreakerId) {
+      return device.breakerId === highlightedBreakerId
+    }
+    if (highlightMode === 'device' || highlightMode === 'circuit') {
+      return device.id === highlightedDeviceId || highlightedCircuitDeviceIds.includes(device.id)
+    }
+    return true
+  }
+
+  // Determine if a device should have pulsing animation
+  const shouldPulseDevice = (device: Device) => {
+    if (highlightMode === 'circuit') {
+      return highlightedCircuitDeviceIds.includes(device.id)
+    }
+    return false
+  }
+
+  // Handle device click for circuit tracing
+  const handleDeviceClick = useCallback((deviceId: string, breakerId: string | undefined) => {
+    if (breakerId) {
+      // Find all devices on the same breaker
+      const siblingDevices = allDevices
+        .filter(({ device }) => device.breakerId === breakerId && device.id !== deviceId)
+        .map(({ device }) => device.id)
+
+      highlightDevice(deviceId, siblingDevices, breakerId)
+    }
+  }, [allDevices, highlightDevice])
 
   // Grid dimensions
   const gridWidth = Math.max(canvasBounds.width, stageSize.width / zoom)
   const gridHeight = Math.max(canvasBounds.height, stageSize.height / zoom)
+
+  // Cursor style based on active tool
+  const cursorStyle = useMemo(() => {
+    switch (activeTool) {
+      case 'pan':
+        return 'grab'
+      case 'wall':
+        return 'crosshair'
+      case 'door':
+      case 'window':
+        return 'cell'
+      case 'eraser':
+        return 'not-allowed'
+      default:
+        return 'default'
+    }
+  }, [activeTool])
 
   return (
     <Stage
@@ -211,11 +334,14 @@ export function FloorPlanCanvas({ floor, breakers, width, height }: FloorPlanCan
       onWheel={handleWheel}
       onClick={handleStageClick}
       onTap={handleStageClick}
+      onMouseMove={handleMouseMove}
+      onDblClick={handleDoubleClick}
       onDragEnd={(e) => {
         if (e.target === stageRef.current) {
           setPanOffset({ x: e.target.x(), y: e.target.y() })
         }
       }}
+      style={{ cursor: cursorStyle }}
     >
       {/* Background layer with grid */}
       <Layer>
@@ -280,6 +406,24 @@ export function FloorPlanCanvas({ floor, breakers, width, height }: FloorPlanCan
         </Layer>
       )}
 
+      {/* Walls layer (below rooms for now, could be rearranged) */}
+      <Layer>
+        {walls.map((wall) => (
+          <WallShape
+            key={wall.id}
+            wall={wall}
+            scale={SCALE}
+            isSelected={selectedWallId === wall.id}
+            onSelect={() => selectWall(wall.id)}
+          />
+        ))}
+      </Layer>
+
+      {/* Wall drawing layer (pending walls and preview) */}
+      <Layer>
+        <WallDrawingLayer scale={SCALE} />
+      </Layer>
+
       {/* Rooms layer */}
       <Layer>
         {roomsWithLayout.map((room) => (
@@ -310,7 +454,9 @@ export function FloorPlanCanvas({ floor, breakers, width, height }: FloorPlanCan
             roomOffsetY={layoutY}
             isSelected={selectedDeviceId === device.id}
             isHighlighted={shouldHighlightDevice(device)}
+            isPulsingHighlight={shouldPulseDevice(device)}
             onSelect={() => selectDevice(device.id)}
+            onDeviceClick={handleDeviceClick}
           />
         ))}
       </Layer>

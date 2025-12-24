@@ -12,7 +12,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Device, Breaker } from '@/types/panel';
+import { Device, Breaker, DevicePlacement } from '@/types/panel';
+
+const PLACEMENT_OPTIONS: { value: DevicePlacement; label: string; description: string }[] = [
+  { value: 'wall', label: 'Wall', description: 'Mounted on a wall (outlets, switches, sconces)' },
+  { value: 'ceiling', label: 'Ceiling', description: 'Mounted on ceiling (lights, fans, smoke detectors)' },
+  { value: 'floor', label: 'Floor', description: 'Floor level (floor outlets, baseboard heaters)' },
+];
+
+// Common heights in inches for quick selection
+const COMMON_HEIGHTS = [
+  { value: 12, label: '12" (Floor outlet)' },
+  { value: 18, label: '18" (Standard outlet)' },
+  { value: 48, label: '48" (Counter height)' },
+  { value: 52, label: '52" (Switch height)' },
+  { value: 84, label: '84" (7 ft - High switch)' },
+  { value: 96, label: '96" (8 ft - Ceiling)' },
+];
 
 const DEVICE_TYPES = [
   { value: 'outlet', label: 'Outlet', subtypes: ['standard', 'gfci', 'usb', '20a', 'dedicated'] },
@@ -42,6 +58,8 @@ interface DeviceFormProps {
     type: string;
     subtype?: string;
     description: string;
+    placement: DevicePlacement;
+    heightFromFloor?: number;
     estimatedWattage?: number;
     isGfciProtected?: boolean;
     notes?: string;
@@ -63,12 +81,35 @@ export function DeviceForm({
   const [subtype, setSubtype] = useState(device?.subtype ?? '');
   const [description, setDescription] = useState(device?.description ?? '');
   const [breakerId, setBreakerId] = useState(device?.breakerId ?? '');
+  const [placement, setPlacement] = useState<DevicePlacement>(device?.placement ?? 'wall');
+  const [heightFromFloor, setHeightFromFloor] = useState<number | undefined>(device?.heightFromFloor ?? undefined);
   const [estimatedWattage, setEstimatedWattage] = useState(device?.estimatedWattage ?? undefined);
   const [isGfciProtected, setIsGfciProtected] = useState(device?.isGfciProtected ?? false);
   const [notes, setNotes] = useState(device?.notes ?? '');
 
   const currentType = DEVICE_TYPES.find((t) => t.value === type);
   const subtypes = currentType?.subtypes ?? [];
+
+  // Auto-set default heights based on device type and placement
+  const getDefaultHeight = (deviceType: string, devicePlacement: DevicePlacement): number | undefined => {
+    if (devicePlacement === 'ceiling') return 96; // 8 ft ceiling
+    if (devicePlacement === 'floor') return 6; // near floor
+    // Wall placements
+    switch (deviceType) {
+      case 'outlet': return 18;
+      case 'switch': return 48;
+      case 'light': return 72; // sconce
+      default: return 48;
+    }
+  };
+
+  const handlePlacementChange = (newPlacement: DevicePlacement) => {
+    setPlacement(newPlacement);
+    // Set a sensible default height if none is set
+    if (!heightFromFloor) {
+      setHeightFromFloor(getDefaultHeight(type, newPlacement));
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,6 +120,8 @@ export function DeviceForm({
       type,
       subtype: subtype || undefined,
       description,
+      placement,
+      heightFromFloor,
       estimatedWattage,
       isGfciProtected,
       notes: notes || undefined,
@@ -132,6 +175,59 @@ export function DeviceForm({
           placeholder="e.g., Outlet behind TV, Kitchen ceiling light"
           required
         />
+      </div>
+
+      {/* Placement and Height */}
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="placement">Placement</Label>
+          <Select value={placement} onValueChange={(v) => handlePlacementChange(v as DevicePlacement)}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {PLACEMENT_OPTIONS.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">
+            {PLACEMENT_OPTIONS.find((o) => o.value === placement)?.description}
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="heightFromFloor">Height from Floor (inches)</Label>
+          <div className="flex gap-2">
+            <Input
+              id="heightFromFloor"
+              type="number"
+              min={0}
+              max={240}
+              value={heightFromFloor ?? ''}
+              onChange={(e) => setHeightFromFloor(e.target.value ? parseInt(e.target.value) : undefined)}
+              placeholder="e.g., 48"
+              className="flex-1"
+            />
+            <Select
+              value={heightFromFloor?.toString() ?? ''}
+              onValueChange={(v) => setHeightFromFloor(v ? parseInt(v) : undefined)}
+            >
+              <SelectTrigger className="w-[140px]">
+                <SelectValue placeholder="Quick pick" />
+              </SelectTrigger>
+              <SelectContent>
+                {COMMON_HEIGHTS.map((h) => (
+                  <SelectItem key={h.value} value={h.value.toString()}>
+                    {h.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
       </div>
 
       <div className="space-y-2">

@@ -42,6 +42,7 @@ export const authOptions: NextAuthOptions = {
           email: user.email,
           name: user.fullName,
           image: user.avatarUrl,
+          subscriptionTier: user.subscriptionTier,
         };
       },
     }),
@@ -55,15 +56,27 @@ export const authOptions: NextAuthOptions = {
     error: "/auth/error",
   },
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
       if (user) {
         token.id = user.id;
+        token.subscriptionTier = (user as { subscriptionTier?: string }).subscriptionTier || 'free';
+      }
+      // Refresh subscription tier on session update
+      if (trigger === 'update') {
+        const dbUser = await prisma.user.findUnique({
+          where: { id: token.id as string },
+          select: { subscriptionTier: true },
+        });
+        if (dbUser) {
+          token.subscriptionTier = dbUser.subscriptionTier;
+        }
       }
       return token;
     },
     async session({ session, token }) {
       if (session?.user) {
         session.user.id = token.id as string;
+        session.user.subscriptionTier = token.subscriptionTier as string;
       }
       return session;
     },

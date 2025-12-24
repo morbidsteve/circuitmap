@@ -21,6 +21,13 @@ import {
   Network,
   RotateCcw,
   Save,
+  Minus,
+  Square,
+  DoorOpen,
+  SquareSlash,
+  Ruler,
+  Eraser,
+  Upload,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -28,10 +35,11 @@ interface FloorPlanToolbarProps {
   floors: FloorWithRooms[]
   breakers: Breaker[]
   onSave: () => void
+  onUploadImage?: () => void
   isSaving?: boolean
 }
 
-export function FloorPlanToolbar({ floors, breakers, onSave, isSaving }: FloorPlanToolbarProps) {
+export function FloorPlanToolbar({ floors, breakers, onSave, onUploadImage, isSaving }: FloorPlanToolbarProps) {
   const {
     selectedFloorId,
     setSelectedFloorId,
@@ -42,12 +50,16 @@ export function FloorPlanToolbar({ floors, breakers, onSave, isSaving }: FloorPl
     setSnapToGrid,
     showWires,
     setShowWires,
+    showDimensions,
+    setShowDimensions,
     activeTool,
     setActiveTool,
     highlightedBreakerId,
     setHighlightedBreaker,
     hasUnsavedChanges,
     discardChanges,
+    wallDrawingState,
+    cancelWallDrawing,
   } = useFloorPlanStore()
 
   // Sort breakers by position for the filter dropdown
@@ -94,7 +106,7 @@ export function FloorPlanToolbar({ floors, breakers, onSave, isSaving }: FloorPl
           variant={activeTool === 'select' ? 'default' : 'ghost'}
           size="sm"
           onClick={() => setActiveTool('select')}
-          title="Select tool"
+          title="Select tool (V)"
         >
           <MousePointer2 className="h-4 w-4" />
         </Button>
@@ -102,11 +114,55 @@ export function FloorPlanToolbar({ floors, breakers, onSave, isSaving }: FloorPl
           variant={activeTool === 'pan' ? 'default' : 'ghost'}
           size="sm"
           onClick={() => setActiveTool('pan')}
-          title="Pan tool"
+          title="Pan tool (Space)"
         >
           <Hand className="h-4 w-4" />
         </Button>
+
+        <div className="w-px h-4 bg-border mx-1" />
+
+        {/* Wall drawing tools */}
+        <Button
+          variant={activeTool === 'wall' ? 'default' : 'ghost'}
+          size="sm"
+          onClick={() => setActiveTool('wall')}
+          title="Wall tool (W) - Click to start, click again to finish segment"
+          className={cn(activeTool === 'wall' && wallDrawingState.isDrawing && 'ring-2 ring-blue-500')}
+        >
+          <Minus className="h-4 w-4" />
+        </Button>
+        <Button
+          variant={activeTool === 'door' ? 'default' : 'ghost'}
+          size="sm"
+          onClick={() => setActiveTool('door')}
+          title="Door tool (D) - Click on wall to add door"
+        >
+          <DoorOpen className="h-4 w-4" />
+        </Button>
+        <Button
+          variant={activeTool === 'window' ? 'default' : 'ghost'}
+          size="sm"
+          onClick={() => setActiveTool('window')}
+          title="Window tool - Click on wall to add window"
+        >
+          <SquareSlash className="h-4 w-4" />
+        </Button>
+        <Button
+          variant={activeTool === 'eraser' ? 'default' : 'ghost'}
+          size="sm"
+          onClick={() => setActiveTool('eraser')}
+          title="Eraser tool (E) - Click to delete walls/openings"
+        >
+          <Eraser className="h-4 w-4" />
+        </Button>
       </div>
+
+      {/* Wall drawing status indicator */}
+      {activeTool === 'wall' && wallDrawingState.isDrawing && (
+        <Badge variant="outline" className="text-blue-600 border-blue-300">
+          Drawing wall... (Esc to cancel)
+        </Badge>
+      )}
 
       <div className="w-px h-6 bg-border" />
 
@@ -138,6 +194,15 @@ export function FloorPlanToolbar({ floors, breakers, onSave, isSaving }: FloorPl
           Grid
         </Button>
         <Button
+          variant={showDimensions ? 'secondary' : 'ghost'}
+          size="sm"
+          onClick={() => setShowDimensions(!showDimensions)}
+          title="Toggle dimension labels"
+        >
+          <Ruler className="h-4 w-4 mr-1" />
+          Dims
+        </Button>
+        <Button
           variant={showWires ? 'secondary' : 'ghost'}
           size="sm"
           onClick={() => setShowWires(!showWires)}
@@ -146,6 +211,17 @@ export function FloorPlanToolbar({ floors, breakers, onSave, isSaving }: FloorPl
           <Network className="h-4 w-4 mr-1" />
           Wires
         </Button>
+        {onUploadImage && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onUploadImage}
+            title="Upload floor plan image to trace"
+          >
+            <Upload className="h-4 w-4 mr-1" />
+            Upload
+          </Button>
+        )}
       </div>
 
       <div className="w-px h-6 bg-border" />

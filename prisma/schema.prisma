@@ -129,10 +129,65 @@ model Floor {
   createdAt      DateTime @default(now())
 
   // Relations
-  panel Panel  @relation(fields: [panelId], references: [id], onDelete: Cascade)
-  rooms Room[]
+  panel          Panel           @relation(fields: [panelId], references: [id], onDelete: Cascade)
+  rooms          Room[]
+  walls          Wall[]
+  floorPlanImage FloorPlanImage?
 
   @@map("floors")
+}
+
+// Walls define the boundaries of rooms and the floor plan
+model Wall {
+  id         String   @id @default(uuid())
+  floorId    String
+  startX     Float    // Start point X (in feet)
+  startY     Float    // Start point Y (in feet)
+  endX       Float    // End point X (in feet)
+  endY       Float    // End point Y (in feet)
+  thickness  Float    @default(0.5) // Wall thickness in feet
+  isExterior Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  // Relations
+  floor    Floor     @relation(fields: [floorId], references: [id], onDelete: Cascade)
+  openings Opening[]
+
+  @@map("walls")
+}
+
+// Openings are doors/windows in walls
+model Opening {
+  id       String  @id @default(uuid())
+  wallId   String
+  type     String  // 'door', 'window', 'archway'
+  position Float   // Position along wall (0-1, percentage from start)
+  width    Float   // Opening width in feet
+  height   Float?  // Optional height for windows
+
+  // Relations
+  wall Wall @relation(fields: [wallId], references: [id], onDelete: Cascade)
+
+  @@map("openings")
+}
+
+// Background images for tracing floor plans
+model FloorPlanImage {
+  id        String   @id @default(uuid())
+  floorId   String   @unique
+  imageUrl  String   // Supabase storage URL
+  scale     Float    @default(1) // Pixels per foot
+  offsetX   Float    @default(0)
+  offsetY   Float    @default(0)
+  rotation  Float    @default(0)
+  opacity   Float    @default(0.5)
+  isVisible Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  // Relations
+  floor Floor @relation(fields: [floorId], references: [id], onDelete: Cascade)
+
+  @@map("floor_plan_images")
 }
 
 // Rooms
@@ -163,6 +218,8 @@ model Device {
   description       String
   positionX         Float?
   positionY         Float?
+  placement         String   @default("wall") // floor, wall, ceiling
+  heightFromFloor   Float?   // Height in inches from floor (e.g., 48 for standard outlet)
   estimatedWattage  Int?
   isGfciProtected   Boolean  @default(false)
   notes             String?

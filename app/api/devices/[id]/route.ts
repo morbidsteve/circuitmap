@@ -9,11 +9,18 @@ export const dynamic = 'force-dynamic';
 const updateDeviceSchema = z.object({
   roomId: z.string().uuid().optional(),
   breakerId: z.string().uuid().optional().nullable(),
-  type: z.enum(['outlet', 'fixture', 'switch', 'appliance', 'hardwired']).optional(),
+  type: z.enum([
+    'outlet', 'light', 'switch', 'appliance', 'hvac', 'water_heater',
+    'dryer', 'range', 'ev_charger', 'pool', 'smoke_detector', 'fan', 'other',
+    // Legacy types for backward compatibility
+    'fixture', 'hardwired'
+  ]).optional(),
   subtype: z.string().optional(),
   description: z.string().min(1).optional(),
   positionX: z.number().optional(),
   positionY: z.number().optional(),
+  placement: z.enum(['floor', 'wall', 'ceiling']).optional(),
+  heightFromFloor: z.number().optional().nullable(),
   estimatedWattage: z.number().int().optional(),
   isGfciProtected: z.boolean().optional(),
   notes: z.string().optional(),

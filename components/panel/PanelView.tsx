@@ -61,15 +61,36 @@ export function PanelView({
 
   // Group tandem breakers by their base slot number
   // e.g., "1A" and "1B" -> slot 1, "3A" and "3B" -> slot 3
+  // Also handles "14A/14B" format (split into virtual A and B breakers)
   const tandemGroups = new Map<number, Breaker[]>();
   breakers.forEach((breaker) => {
-    const match = breaker.position.match(/^(\d+)([ABab])$/);
-    if (match) {
-      const slotNum = parseInt(match[1]);
+    // Check for individual tandem position (e.g., "14A" or "14B")
+    const singleMatch = breaker.position.match(/^(\d+)([ABab])$/);
+    if (singleMatch) {
+      const slotNum = parseInt(singleMatch[1]);
       if (!tandemGroups.has(slotNum)) {
         tandemGroups.set(slotNum, []);
       }
       tandemGroups.get(slotNum)!.push(breaker);
+      return;
+    }
+
+    // Check for combined tandem format (e.g., "14A/14B")
+    const combinedMatch = breaker.position.match(/^(\d+)([ABab])\/\1([ABab])$/i);
+    if (combinedMatch) {
+      const slotNum = parseInt(combinedMatch[1]);
+      const suffixA = combinedMatch[2].toUpperCase();
+      const suffixB = combinedMatch[3].toUpperCase();
+
+      if (!tandemGroups.has(slotNum)) {
+        tandemGroups.set(slotNum, []);
+      }
+
+      // Create virtual breaker entries for A and B from the combined position
+      // Each gets a unique ID suffix to avoid React key conflicts
+      const breakerA = { ...breaker, id: `${breaker.id}-A`, position: `${slotNum}${suffixA}` };
+      const breakerB = { ...breaker, id: `${breaker.id}-B`, position: `${slotNum}${suffixB}` };
+      tandemGroups.get(slotNum)!.push(breakerA, breakerB);
     }
   });
 
@@ -354,6 +375,10 @@ export function PanelView({
           <div className="flex items-center gap-1">
             <div className="w-3 h-3 rounded-full bg-orange-500 text-[8px] text-white flex items-center justify-center font-bold">A</div>
             <span className="text-gray-400">AFCI</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-3 rounded bg-indigo-500 text-[8px] text-white flex items-center justify-center font-bold">T</div>
+            <span className="text-gray-400">Tandem</span>
           </div>
         </div>
       </CardContent>

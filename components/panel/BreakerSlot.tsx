@@ -473,7 +473,7 @@ export function TandemBreakerSlot({
     )}>
       {/* Position number */}
       <div className={cn(
-        "w-6 flex-shrink-0 text-center font-mono text-sm font-bold",
+        "w-6 flex-shrink-0 text-center font-mono font-bold",
         "text-white/90 flex flex-col leading-tight"
       )}>
         <span className="text-[10px]">{position}A</span>
@@ -481,7 +481,14 @@ export function TandemBreakerSlot({
       </div>
 
       {/* Tandem breaker body - split into two halves */}
-      <div className="flex-1 mx-1 flex flex-col gap-0.5">
+      <div className="flex-1 mx-1 flex flex-col gap-0.5 relative">
+        {/* Tandem indicator badge */}
+        <div className={cn(
+          "absolute -top-1 z-10 px-1 py-0.5 rounded text-[7px] font-bold bg-indigo-500 text-white shadow-sm",
+          side === 'left' ? '-right-1' : '-left-1'
+        )}>
+          T
+        </div>
         {renderBreakerHalf(breakerA, 'A')}
         {renderBreakerHalf(breakerB, 'B')}
       </div>

@@ -100,11 +100,11 @@ export function BreakerForm({
             id="position"
             value={position}
             onChange={(e) => setPosition(e.target.value)}
-            placeholder="e.g., 1, 1-3, 1A"
+            placeholder="e.g., 1, 1-3, 14A/14B"
             required
           />
           <p className="text-xs text-muted-foreground">
-            Use 1-3 for double-pole, 1A/1B for tandem breakers
+            Single: 1 | Double-pole: 1-3 | Tandem: 14A/14B
           </p>
         </div>
 

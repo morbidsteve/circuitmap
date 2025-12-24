@@ -59,19 +59,31 @@ export function PanelView({
     breakerMap.set(breaker.position, breaker);
   });
 
+  // Debug: log all breaker positions
+  console.log('All breaker positions:', breakers.map(b => b.position));
+
   // Group tandem breakers by their base slot number
   // e.g., "1A" and "1B" -> slot 1, "3A" and "3B" -> slot 3
   const tandemGroups = new Map<number, Breaker[]>();
   breakers.forEach((breaker) => {
+    console.log(`Checking position "${breaker.position}" for tandem pattern`);
     const match = breaker.position.match(/^(\d+)([ABab])$/);
+    console.log(`  Match result:`, match);
     if (match) {
       const slotNum = parseInt(match[1]);
+      console.log(`  Adding to tandem group ${slotNum}`);
       if (!tandemGroups.has(slotNum)) {
         tandemGroups.set(slotNum, []);
       }
       tandemGroups.get(slotNum)!.push(breaker);
     }
   });
+
+  // Debug: log tandem groups
+  console.log('Final tandem groups:', Array.from(tandemGroups.entries()).map(([k, v]) => ({
+    slot: k,
+    breakers: v.map(b => b.position)
+  })));
 
   // Helper to get effective poles count (use position format as fallback)
   const getEffectivePoles = (breaker: Breaker): number => {
@@ -115,10 +127,12 @@ export function PanelView({
     // Always render as array so TandemBreakerSlot is used (even for single tandem)
     if (!leftSlot && tandemGroups.has(leftPos)) {
       const tandems = tandemGroups.get(leftPos)!;
+      console.log(`Found tandem at left position ${leftPos}:`, tandems.map(b => b.position));
       leftSlot = tandems; // Always use array for tandem display
     }
     if (!rightSlot && tandemGroups.has(rightPos)) {
       const tandems = tandemGroups.get(rightPos)!;
+      console.log(`Found tandem at right position ${rightPos}:`, tandems.map(b => b.position));
       rightSlot = tandems; // Always use array for tandem display
     }
 
@@ -275,6 +289,7 @@ export function PanelView({
 
             {/* Right column (even positions) */}
             <div className="flex-1">
+              {console.log('rightBreakers:', rightBreakers.map((s, i) => ({ index: i, pos: i * 2 + 2, isArray: Array.isArray(s), type: s === 'skip' ? 'skip' : s === undefined ? 'empty' : Array.isArray(s) ? 'tandem' : 'breaker' })))}
               {rightBreakers.map((slot, index) => {
                 const pos = (index * 2 + 2).toString();
                 // Skip slots occupied by multi-pole breakers above

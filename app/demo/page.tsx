@@ -63,10 +63,12 @@ export default function DemoPage() {
     panelId: string;
     position: string;
     amperage: number;
-    poles: number;
+    poles?: number;
     label: string;
-    circuitType: string;
-    protectionType: string;
+    circuitType?: string;
+    protectionType?: string;
+    isOn?: boolean;
+    notes?: string;
   }) => {
     if (!panel) return;
     setIsSaving(true);
@@ -74,7 +76,12 @@ export default function DemoPage() {
       const res = await fetch('/api/breakers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          ...data,
+          poles: data.poles ?? 1,
+          circuitType: data.circuitType ?? 'general',
+          protectionType: data.protectionType ?? 'standard',
+        }),
       });
       if (res.ok) {
         await fetchPanel();
@@ -89,10 +96,12 @@ export default function DemoPage() {
     panelId: string;
     position: string;
     amperage: number;
-    poles: number;
+    poles?: number;
     label: string;
-    circuitType: string;
-    protectionType: string;
+    circuitType?: string;
+    protectionType?: string;
+    isOn?: boolean;
+    notes?: string;
   }) => {
     if (!panel || modalState.type !== 'editBreaker') return;
     setIsSaving(true);

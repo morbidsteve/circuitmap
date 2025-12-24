@@ -104,7 +104,7 @@ export function BreakerForm({
             required
           />
           <p className="text-xs text-muted-foreground">
-            Single: 1 | Double-pole: 1-3 | Tandem: 14A/14B
+            Single: 1 | Double-pole: 1-3 | Tandem: 14A/14B (creates 2 breakers)
           </p>
         </div>
 

@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Breaker } from '@/types/panel';
 
 // Create breaker
+// Note: Combined tandem format (e.g., "14A/14B") will create TWO breakers and return an array
 export function useCreateBreaker() {
   const queryClient = useQueryClient();
 
@@ -27,7 +28,8 @@ export function useCreateBreaker() {
         const error = await res.json();
         throw new Error(error.error || 'Failed to create breaker');
       }
-      return res.json() as Promise<Breaker>;
+      // Returns single Breaker or array of Breakers (for combined tandem format)
+      return res.json() as Promise<Breaker | Breaker[]>;
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['panels'] });

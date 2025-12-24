@@ -51,6 +51,48 @@ export async function POST(request: Request) {
     // For tandem breakers (ending in A or B), allow both A and B
     // For regular breakers and multi-pole (like "2-4"), only one allowed
     const position = result.data.position;
+
+    // Check for combined tandem format (e.g., "14A/14B") - split into two breakers
+    const combinedTandemMatch = position.match(/^(\d+)([AB])\/\1([AB])$/i);
+    if (combinedTandemMatch) {
+      const slotNum = combinedTandemMatch[1];
+      const suffixA = combinedTandemMatch[2].toUpperCase();
+      const suffixB = combinedTandemMatch[3].toUpperCase();
+
+      const positionA = `${slotNum}${suffixA}`;
+      const positionB = `${slotNum}${suffixB}`;
+
+      // Check if either position already exists
+      const existingBreakers = await prisma.breaker.findMany({
+        where: {
+          panelId: result.data.panelId,
+          position: { in: [positionA, positionB] },
+        },
+      });
+
+      if (existingBreakers.length > 0) {
+        const occupied = existingBreakers.map(b => b.position).join(', ');
+        return NextResponse.json(
+          { error: `Position(s) ${occupied} already occupied` },
+          { status: 400 }
+        );
+      }
+
+      // Create both tandem breakers - each gets same properties but different position
+      const { position: _pos, ...breakerDataWithoutPosition } = result.data;
+
+      const [breakerA, breakerB] = await prisma.$transaction([
+        prisma.breaker.create({
+          data: { ...breakerDataWithoutPosition, position: positionA, label: `${result.data.label} (${suffixA})` },
+        }),
+        prisma.breaker.create({
+          data: { ...breakerDataWithoutPosition, position: positionB, label: `${result.data.label} (${suffixB})` },
+        }),
+      ]);
+
+      return NextResponse.json([breakerA, breakerB], { status: 201 });
+    }
+
     const isTandem = /^(\d+)[AB]$/i.test(position);
 
     const existingBreaker = await prisma.breaker.findFirst({

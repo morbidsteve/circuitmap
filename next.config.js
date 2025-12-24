@@ -1,9 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Enable standalone output for Docker production builds
-  output: 'standalone',
+  // Only use standalone for Docker builds, not Vercel
+  ...(process.env.DOCKER_BUILD === 'true' ? { output: 'standalone' } : {}),
   images: {
     domains: ['localhost', 'minio', 'circuitmap-minio'],
+    // Add Vercel's image optimization
+    unoptimized: process.env.VERCEL !== '1',
   },
   // Redirect Chrome DevTools probes to prevent 404 triggering error page
   async rewrites() {

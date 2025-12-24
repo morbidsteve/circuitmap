@@ -1,13 +1,49 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { useSession } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Check, Loader2, ExternalLink } from 'lucide-react';
-import { SUBSCRIPTION_TIERS } from '@/lib/stripe';
+
+// Import tier config directly to avoid Stripe SDK loading at build time
+const SUBSCRIPTION_TIERS = {
+  free: {
+    name: 'Free',
+    maxPanels: 1,
+    maxBreakersPerPanel: 20,
+    features: ['Basic floor plan', 'PDF export', 'Community support'],
+  },
+  pro: {
+    name: 'Pro',
+    maxPanels: Infinity,
+    maxBreakersPerPanel: Infinity,
+    features: [
+      'Unlimited panels',
+      'Unlimited breakers',
+      'Custom floor plan shapes',
+      'Photo attachments',
+      'Load calculator',
+      'Priority support',
+      'Share read-only links',
+    ],
+  },
+  premium: {
+    name: 'Premium',
+    maxPanels: Infinity,
+    maxBreakersPerPanel: Infinity,
+    features: [
+      'Everything in Pro',
+      'Multi-user access',
+      'Historical tracking',
+      'NEC code warnings',
+      'API access',
+      'White-label PDF exports',
+    ],
+  },
+} as const;
 
 type PriceType = 'pro_monthly' | 'pro_yearly' | 'premium_monthly' | 'premium_yearly';
 
@@ -22,14 +58,32 @@ const PRICING = {
   },
 };
 
-export default function BillingPage() {
-  const { data: session } = useSession();
+// Separate component that uses useSearchParams
+function BillingMessages() {
   const searchParams = useSearchParams();
-  const [isLoading, setIsLoading] = useState<string | null>(null);
-  const [billingInterval, setBillingInterval] = useState<'monthly' | 'yearly'>('monthly');
-
   const success = searchParams.get('success');
   const canceled = searchParams.get('canceled');
+
+  return (
+    <>
+      {success && (
+        <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg text-green-800">
+          Thank you for subscribing! Your account has been upgraded.
+        </div>
+      )}
+      {canceled && (
+        <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-800">
+          Checkout was canceled. No charges were made.
+        </div>
+      )}
+    </>
+  );
+}
+
+export default function BillingPage() {
+  const { data: session } = useSession();
+  const [isLoading, setIsLoading] = useState<string | null>(null);
+  const [billingInterval, setBillingInterval] = useState<'monthly' | 'yearly'>('monthly');
 
   const currentTier = (session?.user as { subscriptionTier?: string })?.subscriptionTier || 'free';
 
@@ -88,17 +142,10 @@ export default function BillingPage() {
         </p>
       </div>
 
-      {/* Success/Cancel Messages */}
-      {success && (
-        <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg text-green-800">
-          Thank you for subscribing! Your account has been upgraded.
-        </div>
-      )}
-      {canceled && (
-        <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-800">
-          Checkout was canceled. No charges were made.
-        </div>
-      )}
+      {/* Success/Cancel Messages - wrapped in Suspense */}
+      <Suspense fallback={null}>
+        <BillingMessages />
+      </Suspense>
 
       {/* Current Plan */}
       <Card className="mb-8">

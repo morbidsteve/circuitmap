@@ -123,7 +123,7 @@ services:
     container_name: circuitmap-migrate
     environment:
       - DATABASE_URL=postgresql://circuitmap:circuitmap_dev_password@postgres:5432/circuitmap?schema=public
-    command: sh -c "pnpm prisma generate && pnpm db:push"
+    command: sh -c "pnpm prisma generate && pnpm db:push && pnpm db:seed"
     depends_on:
       postgres:
         condition: service_healthy

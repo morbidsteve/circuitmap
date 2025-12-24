@@ -1,249 +1,261 @@
-# CircuitMap - Electrical Panel Mapping SaaS
+# CircuitMap
 
-A multi-tenant SaaS application for visualizing home electrical panel mappings. Built with Next.js 14, TypeScript, Prisma, and PostgreSQL.
+Map your home's electrical panel to every outlet, switch, and fixture. Know exactly which breaker controls what.
 
-## Quick Start
+![CircuitMap Demo](https://img.shields.io/badge/version-0.0.1-blue)
+
+## Quick Start (Docker)
+
+The easiest way to run CircuitMap is with Docker. This sets up everything automatically.
 
 ### Prerequisites
 
-- Node.js 18+ and pnpm
-- Docker and Docker Compose
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running
 
-### Local Development Setup
+### Run the App
 
-1. **Install dependencies:**
-   ```bash
-   pnpm install
-   ```
+```bash
+# Clone the repository
+git clone https://github.com/morbidsteve/circuitmap.git
+cd circuitmap/circuitmap
 
-2. **Start Docker services (PostgreSQL, Redis, MinIO):**
-   ```bash
-   docker-compose up -d
-   ```
+# Start everything
+docker compose up --build
+```
 
-3. **Set up the database:**
-   ```bash
-   # Generate Prisma client
-   pnpm db:generate
+Wait for the build to complete (first time takes 2-3 minutes). You'll see `circuitmap-app` logs when it's ready.
 
-   # Push schema to database
-   pnpm db:push
+### Access the App
 
-   # Seed with demo data
-   pnpm db:seed
-   ```
+| URL | Description |
+|-----|-------------|
+| http://localhost:3000 | Landing page |
+| http://localhost:3000/demo | Interactive demo with sample data |
+| http://localhost:3000/auth/login | Login page |
+| http://localhost:3000/dashboard | Dashboard (requires login) |
 
-4. **Start the development server:**
-   ```bash
-   pnpm dev
-   ```
+### Default Login Credentials
 
-5. **View the demo:**
-   Open [http://localhost:3000/demo](http://localhost:3000/demo)
+| Email | Password | Tier |
+|-------|----------|------|
+| `admin@circuitmap.com` | `admin123` | Premium |
+| `demo@circuitmap.com` | `demo123` | Pro |
 
-### Demo Credentials
+---
 
-After seeding, you can log in with:
-- **Email:** demo@circuitmap.com
-- **Password:** demo123
+## Using the Demo
 
-## Tech Stack
+The demo page (`/demo`) lets you:
 
-- **Frontend:** Next.js 14, React, TypeScript, Tailwind CSS
-- **UI Components:** shadcn/ui
-- **Authentication:** NextAuth.js
-- **Database:** PostgreSQL (via Docker)
-- **ORM:** Prisma
-- **Storage:** MinIO (S3-compatible)
-- **Cache:** Redis
+- **View breakers** - Click any breaker to see its details
+- **Add breakers** - Click the `+` on empty slots
+- **Edit breakers** - Select a breaker, then click Edit
+- **Delete breakers** - Select a breaker, then click Delete
+- **Drag to reorder** - Drag breakers to different slots
+- **View connected devices** - See outlets/fixtures on each circuit
+
+---
+
+## Reset Everything
+
+If something goes wrong or you want a fresh start:
+
+```bash
+# Stop containers and remove volumes
+docker compose down -v
+
+# Remove persistent data
+rm -rf docker-data
+
+# Rebuild from scratch
+docker compose up --build
+```
+
+---
+
+## Alternative: Native Development
+
+If you prefer running without Docker:
+
+### Prerequisites
+
+- Node.js 20+
+- pnpm (`npm install -g pnpm`)
+- PostgreSQL 16
+- Redis (optional)
+
+### Setup
+
+```bash
+# Install dependencies
+pnpm install
+
+# Copy environment file
+cp .env.example .env
+
+# Update DATABASE_URL in .env to point to your PostgreSQL
+
+# Setup database
+pnpm db:generate
+pnpm db:push
+pnpm db:seed
+
+# Start dev server
+pnpm dev
+```
+
+---
+
+## Available Commands
+
+```bash
+# Development
+pnpm dev              # Start dev server
+pnpm build            # Production build
+pnpm start            # Start production server
+pnpm lint             # Run linter
+
+# Database
+pnpm db:generate      # Generate Prisma client
+pnpm db:push          # Push schema to database
+pnpm db:seed          # Seed demo data
+pnpm db:studio        # Open Prisma Studio (database GUI)
+
+# Testing
+pnpm test:run         # Run unit tests
+pnpm test:e2e         # Run E2E tests (requires app running)
+```
+
+---
+
+## Docker Services
+
+When running with Docker Compose, these services are available:
+
+| Service | Port | Description |
+|---------|------|-------------|
+| App | 3000 | Next.js application |
+| PostgreSQL | 5432 | Database |
+| Redis | 6379 | Cache/sessions |
+| MinIO | 9000, 9001 | File storage (S3-compatible) |
+
+### Docker Commands
+
+```bash
+# Start all services
+docker compose up
+
+# Start in background
+docker compose up -d
+
+# View logs
+docker compose logs -f app
+
+# Stop everything
+docker compose down
+
+# Stop and remove all data
+docker compose down -v && rm -rf docker-data
+```
+
+---
 
 ## Project Structure
 
 ```
 circuitmap/
-├── app/                    # Next.js app router pages
-│   ├── api/               # API routes
-│   ├── demo/              # Demo page
-│   └── globals.css        # Global styles
+├── app/                    # Next.js pages and API routes
+│   ├── api/               # REST API endpoints
+│   ├── auth/              # Login/signup pages
+│   ├── demo/              # Interactive demo
+│   └── (dashboard)/       # Protected dashboard pages
 ├── components/            # React components
-│   ├── ui/               # shadcn/ui components
-│   └── panel/            # Panel visualization components
-├── lib/                   # Utility libraries
-│   ├── auth.ts           # NextAuth configuration
-│   ├── db.ts             # Prisma client
-│   └── utils.ts          # Helper functions
+│   ├── panel/            # Breaker panel visualization
+│   ├── floorplan/        # Floor plan editor
+│   ├── forms/            # Input forms
+│   └── ui/               # shadcn/ui components
 ├── prisma/               # Database schema and seed
-│   ├── schema.prisma     # Database schema
-│   └── seed.ts           # Seed data script
-├── types/                # TypeScript types
-└── docker-compose.yml    # Local dev services
+├── lib/                  # Utilities and config
+├── hooks/                # React hooks
+├── stores/               # Zustand state stores
+└── types/                # TypeScript types
 ```
 
-## Available Scripts
+---
 
-```bash
-pnpm dev           # Start development server
-pnpm build         # Build for production
-pnpm start         # Start production server
-pnpm lint          # Run ESLint
-pnpm db:generate   # Generate Prisma client
-pnpm db:push       # Push schema to database
-pnpm db:migrate    # Run migrations
-pnpm db:seed       # Seed database with demo data
-pnpm db:studio     # Open Prisma Studio
-```
+## Features
 
-## Docker Services
+### Working Now
+- Interactive electrical panel visualization
+- Breaker CRUD (create, read, update, delete)
+- Drag-and-drop breaker reordering
+- Multi-pole breaker support (240V circuits)
+- Circuit type color coding
+- GFCI/AFCI protection indicators
+- Device tracking per circuit
+- User authentication
+- Dashboard with settings
 
-The `docker-compose.yml` sets up three services:
+### Coming Soon
+- Floor plan editor with room shapes
+- Device placement on floor plans
+- Circuit tracing visualization
+- Photo attachments
+- PDF export
+- Subscription billing
 
-- **PostgreSQL** (port 5432) - Main database
-- **Redis** (port 6379) - Session storage and caching
-- **MinIO** (ports 9000, 9001) - S3-compatible object storage
+---
 
-### Managing Docker Services
+## Tech Stack
 
-```bash
-# Start all services
-docker-compose up -d
+- **Framework:** Next.js 14 (App Router)
+- **Language:** TypeScript
+- **Styling:** Tailwind CSS
+- **Components:** shadcn/ui
+- **Database:** PostgreSQL + Prisma
+- **Auth:** NextAuth.js
+- **State:** Zustand
+- **Drag & Drop:** dnd-kit
 
-# Stop all services
-docker-compose down
-
-# View logs
-docker-compose logs -f
-
-# Restart a specific service
-docker-compose restart postgres
-```
-
-## Environment Variables
-
-See `.env.example` for all available environment variables. The `.env` file is already configured for local development.
-
-## Features Implemented
-
-### ✅ Core Features
-- [x] Next.js 14 with App Router
-- [x] TypeScript configuration
-- [x] Tailwind CSS styling
-- [x] Prisma ORM with PostgreSQL
-- [x] NextAuth.js authentication
-- [x] Docker Compose for local dev
-- [x] Database seeding with real data
-- [x] Panel visualization component
-- [x] Interactive breaker selection
-- [x] Device tracking per breaker
-
-### 🚧 Coming Soon
-- [ ] Floor plan visualization
-- [ ] Circuit tracing animation
-- [ ] User authentication pages
-- [ ] Panel CRUD operations
-- [ ] Device management
-- [ ] Photo uploads
-- [ ] PDF export
-- [ ] Stripe integration
-- [ ] Email notifications
-
-## Panel Visualization
-
-The demo includes a fully functional electrical panel visualization with:
-
-- **Realistic panel rendering** - Metallic gray background with 3D-style breakers
-- **Circuit type color coding** - Visual distinction between lighting, appliances, HVAC, etc.
-- **Protection badges** - GFCI, AFCI, and dual-function indicators
-- **Interactive selection** - Click breakers to view connected devices
-- **Multi-pole breakers** - Proper rendering of double and triple-pole breakers
-- **Device listing** - Shows all outlets, fixtures, and appliances per circuit
-
-## Database Schema
-
-The Prisma schema includes:
-
-- **Users** - Authentication and profile
-- **Panels** - Electrical panel properties
-- **Breakers** - Individual circuit breakers
-- **Floors** - Building levels
-- **Rooms** - Room definitions with positions
-- **Devices** - Outlets, fixtures, and appliances
-
-All tables include proper relations and cascade deletes for data integrity.
-
-## Development Notes
-
-### Adding New Components
-
-Use shadcn/ui for new UI components:
-```bash
-npx shadcn-ui@latest add button
-npx shadcn-ui@latest add card
-```
-
-### Database Changes
-
-After modifying `prisma/schema.prisma`:
-```bash
-pnpm db:push        # For development
-# OR
-pnpm db:migrate     # For production-ready migrations
-```
-
-### Viewing Database
-
-```bash
-pnpm db:studio
-```
-
-This opens Prisma Studio at http://localhost:5555
+---
 
 ## Troubleshooting
 
-### Database Connection Issues
+### "No Panel Found" on demo page
 
-If you get database connection errors:
+The database wasn't seeded. Reset with:
 ```bash
-# Check if PostgreSQL is running
-docker-compose ps
-
-# Restart PostgreSQL
-docker-compose restart postgres
-
-# Check logs
-docker-compose logs postgres
+docker compose down -v && rm -rf docker-data && docker compose up --build
 ```
 
-### Port Conflicts
+### Port already in use
 
-If ports 5432, 6379, 9000, or 9001 are already in use, modify `docker-compose.yml` to use different ports.
+Another service is using port 3000, 5432, 6379, or 9000. Either stop that service or modify `docker-compose.yml` to use different ports.
 
-### Prisma Client Issues
+### Prisma client errors
 
-If you get Prisma client errors:
+Regenerate the client:
 ```bash
-# Regenerate Prisma client
-pnpm db:generate
-
-# Clear node_modules and reinstall
-rm -rf node_modules
-pnpm install
+docker compose exec app pnpm prisma generate
 ```
 
-## Next Steps
+### Container won't start
 
-1. **Build authentication pages** - Login, signup, and password reset
-2. **Create panel management UI** - CRUD operations for panels
-3. **Implement floor plan builder** - Interactive room and device placement
-4. **Add circuit tracing animations** - Visual connection highlighting
-5. **Set up Stripe billing** - Subscription tiers and payment processing
-6. **Deploy to production** - Vercel + managed database
+Check the logs:
+```bash
+docker compose logs app
+docker compose logs migrate
+```
+
+---
 
 ## License
 
 MIT
 
+---
+
 ## Support
 
-For issues and questions, please check the documentation files:
-- [CLAUDE.md](./CLAUDE.md) - Technical architecture
-- [PROMPT.md](./PROMPT.md) - Full feature specifications
+- Issues: [GitHub Issues](https://github.com/morbidsteve/circuitmap/issues)
+- Documentation: See [CLAUDE.md](./CLAUDE.md) for technical details

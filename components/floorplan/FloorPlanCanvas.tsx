@@ -50,6 +50,8 @@ export function FloorPlanCanvas({ floor, breakers, walls = [], width, height, on
   const clearSelection = useFloorPlanStore((state) => state.clearSelection)
   const activeTool = useFloorPlanStore((state) => state.activeTool)
   const getRoomWithUpdates = useFloorPlanStore((state) => state.getRoomWithUpdates)
+  const pendingRoomUpdates = useFloorPlanStore((state) => state.pendingRoomUpdates)
+  const pendingDeviceUpdates = useFloorPlanStore((state) => state.pendingDeviceUpdates)
   const startWallDrawing = useFloorPlanStore((state) => state.startWallDrawing)
   const updateWallPreview = useFloorPlanStore((state) => state.updateWallPreview)
   const finishWallSegment = useFloorPlanStore((state) => state.finishWallSegment)
@@ -118,7 +120,7 @@ export function FloorPlanCanvas({ floor, breakers, walls = [], width, height, on
     })
 
     return layoutRooms
-  }, [floor.rooms, getRoomWithUpdates, stageSize.width])
+  }, [floor.rooms, getRoomWithUpdates, pendingRoomUpdates, stageSize.width])
 
   // Calculate canvas bounds based on room layout
   const canvasBounds = useMemo(() => {

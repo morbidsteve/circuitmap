@@ -57,7 +57,10 @@ export function WireConnection({
   isPulsing = false,
 }: WireConnectionProps) {
   const lineRef = useRef<Konva.Shape>(null)
-  const { getDeviceWithUpdates } = useFloorPlanStore()
+  const getDeviceWithUpdates = useFloorPlanStore((state) => state.getDeviceWithUpdates)
+  const pendingDeviceUpdates = useFloorPlanStore((state) => state.pendingDeviceUpdates)
+  // Subscribe to this device's pending updates to re-render when position changes
+  const deviceUpdates = pendingDeviceUpdates[device.id]
 
   const displayDevice = getDeviceWithUpdates(device)
 

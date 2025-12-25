@@ -217,6 +217,9 @@ export function DeviceMarker({
   // Use selectors to prevent re-renders when unrelated store state changes
   const getDeviceWithUpdates = useFloorPlanStore((state) => state.getDeviceWithUpdates)
   const updateDevicePosition = useFloorPlanStore((state) => state.updateDevicePosition)
+  const pendingDeviceUpdates = useFloorPlanStore((state) => state.pendingDeviceUpdates)
+  // Subscribe to pending updates to re-render when device position changes
+  const deviceUpdates = pendingDeviceUpdates[device.id]
 
   const displayDevice = getDeviceWithUpdates(device)
 

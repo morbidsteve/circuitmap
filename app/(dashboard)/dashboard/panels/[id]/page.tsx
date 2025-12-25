@@ -1421,6 +1421,13 @@ export default function PanelDetailPage() {
                 await createDevice.mutateAsync(data)
                 closeModal()
               }}
+              onSubmitMultiple={async (devices) => {
+                // Create all devices in sequence to avoid race conditions
+                for (const data of devices) {
+                  await createDevice.mutateAsync(data)
+                }
+                closeModal()
+              }}
               onCancel={closeModal}
               isLoading={createDevice.isPending}
             />

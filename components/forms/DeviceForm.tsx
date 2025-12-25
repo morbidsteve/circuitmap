@@ -46,26 +46,29 @@ const DEVICE_TYPES = [
   { value: 'other', label: 'Other', subtypes: [] },
 ];
 
+interface DeviceFormData {
+  roomId: string;
+  panelId: string;
+  breakerId?: string | null;
+  type: string;
+  subtype?: string;
+  description: string;
+  placement: DevicePlacement;
+  heightFromFloor?: number;
+  positionX?: number;
+  positionY?: number;
+  estimatedWattage?: number;
+  isGfciProtected?: boolean;
+  notes?: string;
+}
+
 interface DeviceFormProps {
   device?: Device;
   roomId: string;
   panelId: string;
   breakers: Breaker[];
-  onSubmit: (data: {
-    roomId: string;
-    panelId: string;
-    breakerId?: string | null;
-    type: string;
-    subtype?: string;
-    description: string;
-    placement: DevicePlacement;
-    heightFromFloor?: number;
-    positionX?: number;
-    positionY?: number;
-    estimatedWattage?: number;
-    isGfciProtected?: boolean;
-    notes?: string;
-  }) => void;
+  onSubmit: (data: DeviceFormData) => void;
+  onSubmitMultiple?: (devices: DeviceFormData[]) => void;
   onCancel: () => void;
   isLoading?: boolean;
 }
@@ -76,6 +79,7 @@ export function DeviceForm({
   panelId,
   breakers,
   onSubmit,
+  onSubmitMultiple,
   onCancel,
   isLoading,
 }: DeviceFormProps) {
@@ -90,6 +94,10 @@ export function DeviceForm({
   const [estimatedWattage, setEstimatedWattage] = useState(device?.estimatedWattage ?? undefined);
   const [isGfciProtected, setIsGfciProtected] = useState(device?.isGfciProtected ?? false);
   const [notes, setNotes] = useState(device?.notes ?? '');
+  const [quantity, setQuantity] = useState(1);
+
+  // Only show quantity for new devices
+  const showQuantity = !device && onSubmitMultiple;
 
   const currentType = DEVICE_TYPES.find((t) => t.value === type);
   const subtypes = currentType?.subtypes ?? [];
@@ -117,7 +125,8 @@ export function DeviceForm({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit({
+
+    const baseData: DeviceFormData = {
       roomId,
       panelId,
       breakerId: breakerId === '__none__' ? null : breakerId,
@@ -131,7 +140,24 @@ export function DeviceForm({
       estimatedWattage,
       isGfciProtected,
       notes: notes || undefined,
-    });
+    };
+
+    // Handle multiple device creation
+    if (quantity > 1 && onSubmitMultiple) {
+      const devices: DeviceFormData[] = [];
+      for (let i = 1; i <= quantity; i++) {
+        devices.push({
+          ...baseData,
+          description: `${description} ${i}`,
+          // Spread devices out slightly in position
+          positionX: positionX !== undefined ? positionX + (i - 1) * 1.5 : undefined,
+          positionY: positionY,
+        });
+      }
+      onSubmitMultiple(devices);
+    } else {
+      onSubmit(baseData);
+    }
   };
 
   return (
@@ -199,15 +225,38 @@ export function DeviceForm({
         </div>
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="description">Description *</Label>
-        <Input
-          id="description"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="e.g., Outlet behind TV, Kitchen ceiling light"
-          required
-        />
+      <div className="grid grid-cols-1 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="description">Description *</Label>
+          <Input
+            id="description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder={showQuantity && quantity > 1 ? "e.g., Kitchen Outlet (will append 1, 2, 3...)" : "e.g., Outlet behind TV, Kitchen ceiling light"}
+            required
+          />
+        </div>
+
+        {/* Quantity - only for new devices */}
+        {showQuantity && (
+          <div className="space-y-2">
+            <Label htmlFor="quantity">Quantity</Label>
+            <div className="flex items-center gap-2">
+              <Input
+                id="quantity"
+                type="number"
+                min={1}
+                max={20}
+                value={quantity}
+                onChange={(e) => setQuantity(Math.max(1, Math.min(20, parseInt(e.target.value) || 1)))}
+                className="w-20"
+              />
+              <span className="text-sm text-muted-foreground">
+                {quantity > 1 ? `Will create ${quantity} devices (${description} 1, ${description} 2, ...)` : 'Create single device'}
+              </span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Placement and Height */}
@@ -363,7 +412,7 @@ export function DeviceForm({
           Cancel
         </Button>
         <Button type="submit" disabled={isLoading || !description}>
-          {isLoading ? 'Saving...' : device ? 'Update Device' : 'Create Device'}
+          {isLoading ? 'Saving...' : device ? 'Update Device' : quantity > 1 ? `Create ${quantity} Devices` : 'Create Device'}
         </Button>
       </div>
     </form>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import dynamic from 'next/dynamic'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -48,6 +48,7 @@ function RoomCanvasLoading() {
 
 interface RoomTabProps {
   panel: PanelWithRelations
+  initialRoomId?: string | null
   onEditDevice: (device: Device, roomId: string) => void
   onDeleteDevice: (device: Device) => void
   onAddDevice: (roomId: string) => void
@@ -55,6 +56,7 @@ interface RoomTabProps {
 }
 
 type SortMode = 'type' | 'breaker' | 'name'
+type FilterMode = 'all' | 'unassigned'
 
 // Device type labels
 const DEVICE_LABELS: Record<string, string> = {
@@ -82,6 +84,7 @@ const PLACEMENT_LABELS: Record<string, string> = {
 
 export function RoomTab({
   panel,
+  initialRoomId,
   onEditDevice,
   onDeleteDevice,
   onAddDevice,
@@ -100,23 +103,37 @@ export function RoomTab({
     return rooms
   }, [panel.floors])
 
-  // Selected room state
+  // Selected room state - use initialRoomId if provided, otherwise first room
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(
-    allRooms.length > 0 ? allRooms[0].room.id : null
+    initialRoomId ?? (allRooms.length > 0 ? allRooms[0].room.id : null)
   )
+
+  // Update selected room when initialRoomId changes externally
+  useEffect(() => {
+    if (initialRoomId && allRooms.some((r) => r.room.id === initialRoomId)) {
+      setSelectedRoomId(initialRoomId)
+    }
+  }, [initialRoomId, allRooms])
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null)
   const [sortMode, setSortMode] = useState<SortMode>('type')
+  const [filterMode, setFilterMode] = useState<FilterMode>('all')
 
   // Find selected room and its floor
   const selectedRoomData = allRooms.find((r) => r.room.id === selectedRoomId)
   const selectedRoom = selectedRoomData?.room
   const selectedFloor = selectedRoomData?.floor
 
-  // Sort devices based on sort mode
+  // Filter and sort devices
   const sortedDevices = useMemo(() => {
     if (!selectedRoom) return []
-    const devices = [...selectedRoom.devices]
 
+    // Apply filter first
+    let devices = [...selectedRoom.devices]
+    if (filterMode === 'unassigned') {
+      devices = devices.filter((d) => !d.breakerId)
+    }
+
+    // Then sort
     switch (sortMode) {
       case 'type':
         return devices.sort((a, b) => a.type.localeCompare(b.type))
@@ -134,7 +151,7 @@ export function RoomTab({
       default:
         return devices
     }
-  }, [selectedRoom, sortMode, panel.breakers])
+  }, [selectedRoom, sortMode, filterMode, panel.breakers])
 
   // Calculate room stats
   const roomStats = useMemo(() => {
@@ -254,12 +271,20 @@ export function RoomTab({
             </div>
           </Card>
           {roomStats.unassignedCount > 0 && (
-            <Card className="p-3 border-orange-200 bg-orange-50">
+            <Card
+              className={cn(
+                'p-3 border-orange-200 bg-orange-50 cursor-pointer transition-all hover:border-orange-400',
+                filterMode === 'unassigned' && 'ring-2 ring-orange-500 border-orange-500'
+              )}
+              onClick={() => setFilterMode(filterMode === 'unassigned' ? 'all' : 'unassigned')}
+            >
               <div className="flex items-center gap-2">
                 <MapPin className="h-4 w-4 text-orange-500" />
                 <div>
                   <div className="text-lg font-bold text-orange-600">{roomStats.unassignedCount}</div>
-                  <div className="text-xs text-orange-600">Unassigned</div>
+                  <div className="text-xs text-orange-600">
+                    {filterMode === 'unassigned' ? 'Showing Unassigned' : 'Unassigned'}
+                  </div>
                 </div>
               </div>
             </Card>
@@ -296,6 +321,18 @@ export function RoomTab({
             <div className="flex items-center justify-between">
               <CardTitle className="text-base">Devices</CardTitle>
               <div className="flex items-center gap-2">
+                {filterMode === 'unassigned' && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-orange-600 border-orange-300 hover:bg-orange-50"
+                    onClick={() => setFilterMode('all')}
+                  >
+                    <MapPin className="h-4 w-4 mr-1" />
+                    Unassigned
+                    <span className="ml-1 text-xs">✕</span>
+                  </Button>
+                )}
                 <Button
                   variant="ghost"
                   size="sm"
@@ -311,7 +348,9 @@ export function RoomTab({
               </div>
             </div>
             <CardDescription>
-              {sortedDevices.length} device{sortedDevices.length !== 1 ? 's' : ''} in this room
+              {filterMode === 'unassigned'
+                ? `${sortedDevices.length} unassigned device${sortedDevices.length !== 1 ? 's' : ''}`
+                : `${sortedDevices.length} device${sortedDevices.length !== 1 ? 's' : ''} in this room`}
             </CardDescription>
           </CardHeader>
           <CardContent className="p-0">

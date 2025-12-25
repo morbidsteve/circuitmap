@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import {
   Dialog,
   DialogContent,
@@ -59,6 +60,10 @@ import {
   Download,
   Scissors,
   LayoutGrid,
+  Eye,
+  Filter,
+  Group,
+  ArrowUpDown,
 } from 'lucide-react'
 import {
   DropdownMenu,
@@ -111,6 +116,13 @@ export default function PanelDetailPage() {
   const [selectedBreakerId, setSelectedBreakerId] = useState<string>()
   const [modalState, setModalState] = useState<ModalState>({ type: 'none' })
   const [expandedFloors, setExpandedFloors] = useState<Set<string>>(new Set())
+  const [activeTab, setActiveTab] = useState('breakers')
+  const [selectedRoomIdForNavigation, setSelectedRoomIdForNavigation] = useState<string | null>(null)
+  const [selectedFloorIdForNavigation, setSelectedFloorIdForNavigation] = useState<string | null>(null)
+  // Device tab state
+  const [deviceFilter, setDeviceFilter] = useState<'all' | 'unassigned' | string>('all')
+  const [deviceGroupBy, setDeviceGroupBy] = useState<'none' | 'type' | 'room' | 'floor' | 'breaker'>('none')
+  const [deviceSortBy, setDeviceSortBy] = useState<'name' | 'type' | 'location'>('name')
   const hasMigratedTandems = useRef(false)
 
   // Auto-migrate any combined tandem breakers (e.g., "14A/14B") to separate records
@@ -216,6 +228,17 @@ export default function PanelDetailPage() {
     setExpandedFloors(newExpanded)
   }
 
+  // Navigation helpers
+  const navigateToRoom = (roomId: string) => {
+    setSelectedRoomIdForNavigation(roomId)
+    setActiveTab('rooms')
+  }
+
+  const navigateToFloorPlan = (floorId: string) => {
+    setSelectedFloorIdForNavigation(floorId)
+    setActiveTab('floorplan')
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -265,7 +288,7 @@ export default function PanelDetailPage() {
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="breakers" className="space-y-6">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="w-full justify-start overflow-x-auto flex-nowrap">
           <TabsTrigger value="breakers" className="gap-2 min-w-fit">
             <Zap className="h-4 w-4" />
@@ -648,6 +671,7 @@ export default function PanelDetailPage() {
             panelId={panelId}
             panelName={panel.name}
             mainAmperage={panel.mainAmperage}
+            initialFloorId={selectedFloorIdForNavigation}
           />
         </TabsContent>
 
@@ -655,6 +679,7 @@ export default function PanelDetailPage() {
         <TabsContent value="rooms">
           <RoomTab
             panel={panel}
+            initialRoomId={selectedRoomIdForNavigation}
             onEditDevice={(device, roomId) => setModalState({ type: 'editDevice', device, roomId })}
             onDeleteDevice={(device) => setModalState({ type: 'deleteDevice', device })}
             onAddDevice={(roomId) => setModalState({ type: 'createDevice', roomId })}
@@ -726,6 +751,12 @@ export default function PanelDetailPage() {
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
                                 <DropdownMenuItem
+                                  onClick={() => navigateToFloorPlan(floor.id)}
+                                >
+                                  <Map className="h-4 w-4 mr-2" />
+                                  View Floor Plan
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
                                   onClick={() => setModalState({ type: 'editFloor', floor })}
                                 >
                                   <Edit className="h-4 w-4 mr-2" />
@@ -757,10 +788,14 @@ export default function PanelDetailPage() {
                               {floor.rooms.map((room) => (
                                 <div
                                   key={room.id}
-                                  className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
+                                  className="flex items-center justify-between p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors cursor-pointer group"
+                                  onClick={() => navigateToRoom(room.id)}
                                 >
                                   <div>
-                                    <div className="font-medium">{room.name}</div>
+                                    <div className="font-medium flex items-center gap-2">
+                                      {room.name}
+                                      <Eye className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                                    </div>
                                     <div className="text-xs text-muted-foreground">
                                       {room.devices.length} device
                                       {room.devices.length !== 1 ? 's' : ''}
@@ -768,39 +803,56 @@ export default function PanelDetailPage() {
                                   </div>
                                   <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
-                                      <Button variant="ghost" size="icon" className="h-7 w-7">
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-7 w-7"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
                                         <MoreVertical className="h-3 w-3" />
                                       </Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
                                       <DropdownMenuItem
-                                        onClick={() =>
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          navigateToRoom(room.id)
+                                        }}
+                                      >
+                                        <LayoutGrid className="h-4 w-4 mr-2" />
+                                        View Room
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem
+                                        onClick={(e) => {
+                                          e.stopPropagation()
                                           setModalState({
                                             type: 'createDevice',
                                             roomId: room.id,
                                           })
-                                        }
+                                        }}
                                       >
                                         <Plus className="h-4 w-4 mr-2" />
                                         Add Device
                                       </DropdownMenuItem>
                                       <DropdownMenuItem
-                                        onClick={() =>
+                                        onClick={(e) => {
+                                          e.stopPropagation()
                                           setModalState({
                                             type: 'editRoom',
                                             room,
                                             floorId: floor.id,
                                           })
-                                        }
+                                        }}
                                       >
                                         <Edit className="h-4 w-4 mr-2" />
                                         Edit
                                       </DropdownMenuItem>
                                       <DropdownMenuItem
                                         className="text-destructive"
-                                        onClick={() =>
+                                        onClick={(e) => {
+                                          e.stopPropagation()
                                           setModalState({ type: 'deleteRoom', room })
-                                        }
+                                        }}
                                       >
                                         <Trash2 className="h-4 w-4 mr-2" />
                                         Delete
@@ -823,9 +875,84 @@ export default function PanelDetailPage() {
         {/* Devices Tab */}
         <TabsContent value="devices">
           <div className="space-y-4">
-            <div className="flex justify-between items-center">
+            {/* Header with controls */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <h3 className="text-lg font-semibold">All Devices ({allDevices.length})</h3>
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Filter */}
+                <Select value={deviceFilter} onValueChange={(v) => setDeviceFilter(v as typeof deviceFilter)}>
+                  <SelectTrigger className="w-[140px]">
+                    <Filter className="h-4 w-4 mr-2" />
+                    <SelectValue placeholder="Filter" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Devices</SelectItem>
+                    <SelectItem value="unassigned">Unassigned</SelectItem>
+                    <SelectItem value="outlet">Outlets</SelectItem>
+                    <SelectItem value="light">Lights</SelectItem>
+                    <SelectItem value="switch">Switches</SelectItem>
+                    <SelectItem value="appliance">Appliances</SelectItem>
+                    <SelectItem value="hvac">HVAC</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {/* Group By */}
+                <Select value={deviceGroupBy} onValueChange={(v) => setDeviceGroupBy(v as typeof deviceGroupBy)}>
+                  <SelectTrigger className="w-[130px]">
+                    <Group className="h-4 w-4 mr-2" />
+                    <SelectValue placeholder="Group" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No Grouping</SelectItem>
+                    <SelectItem value="type">By Type</SelectItem>
+                    <SelectItem value="room">By Room</SelectItem>
+                    <SelectItem value="floor">By Floor</SelectItem>
+                    <SelectItem value="breaker">By Breaker</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {/* Sort */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const sorts: Array<typeof deviceSortBy> = ['name', 'type', 'location']
+                    const idx = sorts.indexOf(deviceSortBy)
+                    setDeviceSortBy(sorts[(idx + 1) % sorts.length])
+                  }}
+                >
+                  <ArrowUpDown className="h-4 w-4 mr-1" />
+                  {deviceSortBy === 'name' ? 'Name' : deviceSortBy === 'type' ? 'Type' : 'Location'}
+                </Button>
+              </div>
             </div>
+
+            {/* Active filters indicator */}
+            {(deviceFilter !== 'all' || deviceGroupBy !== 'none') && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <span>Active:</span>
+                {deviceFilter !== 'all' && (
+                  <Badge
+                    variant="secondary"
+                    className="cursor-pointer"
+                    onClick={() => setDeviceFilter('all')}
+                  >
+                    {deviceFilter === 'unassigned' ? 'Unassigned' : deviceFilter}
+                    <X className="h-3 w-3 ml-1" />
+                  </Badge>
+                )}
+                {deviceGroupBy !== 'none' && (
+                  <Badge
+                    variant="secondary"
+                    className="cursor-pointer"
+                    onClick={() => setDeviceGroupBy('none')}
+                  >
+                    Grouped by {deviceGroupBy}
+                    <X className="h-3 w-3 ml-1" />
+                  </Badge>
+                )}
+              </div>
+            )}
 
             {allDevices.length === 0 ? (
               <Card>
@@ -837,80 +964,174 @@ export default function PanelDetailPage() {
                   </p>
                 </CardContent>
               </Card>
-            ) : (
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {allDevices.map((device) => {
-                  const breaker = panel.breakers.find((b) => b.id === device.breakerId)
-                  return (
-                    <Card key={device.id}>
-                      <CardContent className="p-4">
-                        <div className="flex justify-between items-start mb-2">
-                          <div>
-                            <div className="font-medium">{device.description}</div>
-                            <div className="text-xs text-muted-foreground">
-                              {device.floorName} &bull; {device.roomName}
-                            </div>
-                          </div>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-7 w-7">
-                                <MoreVertical className="h-3 w-3" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem
-                                onClick={() =>
-                                  setModalState({
-                                    type: 'editDevice',
-                                    device,
-                                    roomId: device.roomId,
-                                  })
-                                }
-                              >
-                                <Edit className="h-4 w-4 mr-2" />
-                                Edit
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                className="text-destructive"
-                                onClick={() => setModalState({ type: 'deleteDevice', device })}
-                              >
-                                <Trash2 className="h-4 w-4 mr-2" />
-                                Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+            ) : (() => {
+              // Apply filters
+              let filteredDevices = [...allDevices]
+              if (deviceFilter === 'unassigned') {
+                filteredDevices = filteredDevices.filter((d) => !d.breakerId)
+              } else if (deviceFilter !== 'all') {
+                filteredDevices = filteredDevices.filter((d) => d.type === deviceFilter)
+              }
+
+              // Apply sorting
+              filteredDevices.sort((a, b) => {
+                if (deviceSortBy === 'name') {
+                  return (a.description || '').localeCompare(b.description || '')
+                } else if (deviceSortBy === 'type') {
+                  return a.type.localeCompare(b.type)
+                } else {
+                  return `${a.floorName}-${a.roomName}`.localeCompare(`${b.floorName}-${b.roomName}`)
+                }
+              })
+
+              // Group devices
+              const groups: Record<string, typeof filteredDevices> = {}
+              if (deviceGroupBy === 'none') {
+                groups[''] = filteredDevices
+              } else {
+                filteredDevices.forEach((device) => {
+                  let key = ''
+                  if (deviceGroupBy === 'type') {
+                    key = device.type
+                  } else if (deviceGroupBy === 'room') {
+                    key = `${device.floorName} - ${device.roomName}`
+                  } else if (deviceGroupBy === 'floor') {
+                    key = device.floorName
+                  } else if (deviceGroupBy === 'breaker') {
+                    const breaker = panel.breakers.find((b) => b.id === device.breakerId)
+                    key = breaker ? `#${breaker.position}: ${breaker.label}` : 'Unassigned'
+                  }
+                  if (!groups[key]) groups[key] = []
+                  groups[key].push(device)
+                })
+              }
+
+              if (filteredDevices.length === 0) {
+                return (
+                  <Card>
+                    <CardContent className="py-8 text-center text-muted-foreground">
+                      <p>No devices match the current filter</p>
+                      <Button
+                        variant="link"
+                        className="mt-2"
+                        onClick={() => setDeviceFilter('all')}
+                      >
+                        Clear filter
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )
+              }
+
+              return (
+                <div className="space-y-6">
+                  {Object.entries(groups).map(([groupName, devices]) => (
+                    <div key={groupName || 'all'}>
+                      {groupName && (
+                        <div className="flex items-center gap-2 mb-3">
+                          <h4 className="font-semibold capitalize">{groupName}</h4>
+                          <Badge variant="outline">{devices.length}</Badge>
                         </div>
-                        <div className="flex flex-wrap gap-1 mb-2">
-                          <Badge variant="secondary" className="text-xs">
-                            {device.type}
-                          </Badge>
-                          {device.subtype && (
-                            <Badge variant="outline" className="text-xs">
-                              {device.subtype}
-                            </Badge>
-                          )}
-                          {device.isGfciProtected && (
-                            <Badge variant="outline" className="text-xs text-green-600">
-                              GFCI
-                            </Badge>
-                          )}
-                        </div>
-                        {breaker ? (
-                          <div className="text-xs text-muted-foreground">
-                            <Zap className="h-3 w-3 inline mr-1" />
-                            Breaker #{breaker.position}: {breaker.label}
-                          </div>
-                        ) : (
-                          <div className="text-xs text-orange-500">
-                            Not assigned to breaker
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  )
-                })}
-              </div>
-            )}
+                      )}
+                      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                        {devices.map((device) => {
+                          const breaker = panel.breakers.find((b) => b.id === device.breakerId)
+                          return (
+                            <Card
+                              key={device.id}
+                              className="hover:border-primary/50 transition-colors cursor-pointer"
+                              onClick={() => navigateToRoom(device.roomId)}
+                            >
+                              <CardContent className="p-4">
+                                <div className="flex justify-between items-start mb-2">
+                                  <div>
+                                    <div className="font-medium">{device.description}</div>
+                                    <div className="text-xs text-muted-foreground">
+                                      {device.floorName} &bull; {device.roomName}
+                                    </div>
+                                  </div>
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-7 w-7"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        <MoreVertical className="h-3 w-3" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                      <DropdownMenuItem
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          navigateToRoom(device.roomId)
+                                        }}
+                                      >
+                                        <LayoutGrid className="h-4 w-4 mr-2" />
+                                        View in Room
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          setModalState({
+                                            type: 'editDevice',
+                                            device,
+                                            roomId: device.roomId,
+                                          })
+                                        }}
+                                      >
+                                        <Edit className="h-4 w-4 mr-2" />
+                                        Edit
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem
+                                        className="text-destructive"
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          setModalState({ type: 'deleteDevice', device })
+                                        }}
+                                      >
+                                        <Trash2 className="h-4 w-4 mr-2" />
+                                        Delete
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </div>
+                                <div className="flex flex-wrap gap-1 mb-2">
+                                  <Badge variant="secondary" className="text-xs">
+                                    {device.type}
+                                  </Badge>
+                                  {device.subtype && (
+                                    <Badge variant="outline" className="text-xs">
+                                      {device.subtype}
+                                    </Badge>
+                                  )}
+                                  {device.isGfciProtected && (
+                                    <Badge variant="outline" className="text-xs text-green-600">
+                                      GFCI
+                                    </Badge>
+                                  )}
+                                </div>
+                                {breaker ? (
+                                  <div className="text-xs text-muted-foreground">
+                                    <Zap className="h-3 w-3 inline mr-1" />
+                                    Breaker #{breaker.position}: {breaker.label}
+                                  </div>
+                                ) : (
+                                  <div className="text-xs text-orange-500">
+                                    Not assigned to breaker
+                                  </div>
+                                )}
+                              </CardContent>
+                            </Card>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )
+            })()}
           </div>
         </TabsContent>
       </Tabs>

@@ -59,9 +59,10 @@ interface FloorPlanEditorProps {
   panelId: string
   panelName?: string
   mainAmperage?: number
+  initialFloorId?: string | null
 }
 
-export function FloorPlanEditor({ floors, breakers, panelId, panelName, mainAmperage }: FloorPlanEditorProps) {
+export function FloorPlanEditor({ floors, breakers, panelId, panelName, mainAmperage, initialFloorId }: FloorPlanEditorProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [canvasSize, setCanvasSize] = useState({ width: 800, height: 500 })
   const [isSaving, setIsSaving] = useState(false)
@@ -108,6 +109,13 @@ export function FloorPlanEditor({ floors, breakers, panelId, panelName, mainAmpe
       setSelectedFloorId(floors[0].id)
     }
   }, [floors, selectedFloorId, setSelectedFloorId])
+
+  // Handle external floor navigation
+  useEffect(() => {
+    if (initialFloorId && floors.some((f) => f.id === initialFloorId)) {
+      setSelectedFloorId(initialFloorId)
+    }
+  }, [initialFloorId, floors, setSelectedFloorId])
 
   // Handle container resize
   useEffect(() => {

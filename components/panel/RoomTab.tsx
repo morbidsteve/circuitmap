@@ -360,9 +360,9 @@ export function RoomTab({
 
       {/* Main Content - Canvas + Device List */}
       <div className="grid lg:grid-cols-2 gap-4">
-        {/* Room Canvas */}
-        <Card className="lg:col-span-1">
-          <CardContent className="p-0 h-[500px]">
+        {/* Room Canvas - responsive height */}
+        <Card className="lg:col-span-1 order-2 lg:order-1">
+          <CardContent className="p-0 h-[300px] sm:h-[400px] lg:h-[500px]">
             {selectedRoom ? (
               <RoomCanvas
                 room={selectedRoom}
@@ -382,8 +382,8 @@ export function RoomTab({
           </CardContent>
         </Card>
 
-        {/* Device List */}
-        <Card className="lg:col-span-1">
+        {/* Device List - shows first on mobile for quick access */}
+        <Card className="lg:col-span-1 order-1 lg:order-2">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <CardTitle className="text-base">Devices</CardTitle>
@@ -421,7 +421,7 @@ export function RoomTab({
             </CardDescription>
           </CardHeader>
           <CardContent className="p-0">
-            <ScrollArea className="h-[420px]">
+            <ScrollArea className="h-[280px] sm:h-[350px] lg:h-[420px]">
               {sortedDevices.length === 0 ? (
                 <div className="py-8 text-center text-muted-foreground">
                   <Plug className="h-8 w-8 mx-auto mb-2 opacity-50" />

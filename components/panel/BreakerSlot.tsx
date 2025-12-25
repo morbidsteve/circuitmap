@@ -436,13 +436,13 @@ export function TandemBreakerSlot({
 
   const renderBreakerHalf = (breaker: Breaker | undefined, suffix: 'A' | 'B') => {
     if (!breaker) {
-      // Empty tandem half-slot
+      // Empty tandem half-slot - increased height for better touch targets
       return (
         <div
           key={`empty-${suffix}`}
           className={cn(
-            "h-[22px] rounded border-2 border-dashed border-gray-300/50 bg-gray-600/30",
-            "flex items-center justify-center text-[9px] text-gray-300/70"
+            "h-[26px] sm:h-[22px] rounded border-2 border-dashed border-gray-300/50 bg-gray-600/30",
+            "flex items-center justify-center text-[10px] sm:text-[9px] text-gray-300/70 touch-manipulation"
           )}
         >
           <span className="font-mono">{position}{suffix}</span>
@@ -457,7 +457,7 @@ export function TandemBreakerSlot({
       <div
         key={breaker.id}
         className={cn(
-          "relative h-[22px] rounded shadow-sm cursor-pointer",
+          "relative h-[26px] sm:h-[22px] rounded shadow-sm cursor-pointer touch-manipulation",
           "border flex items-center px-1.5 gap-1",
           side === 'right' && 'flex-row-reverse',
           isSelected
@@ -500,7 +500,7 @@ export function TandemBreakerSlot({
 
   return (
     <div className={cn(
-      "h-12 mb-1 flex items-center",
+      "h-14 sm:h-12 mb-1 flex items-center",
       side === 'left' ? 'flex-row' : 'flex-row-reverse'
     )}>
       {/* Position number */}
@@ -508,12 +508,12 @@ export function TandemBreakerSlot({
         "w-6 flex-shrink-0 text-center font-mono font-bold",
         "text-white/90 flex flex-col leading-tight"
       )}>
-        <span className="text-[10px]">{position}A</span>
-        <span className="text-[10px]">{position}B</span>
+        <span className="text-[11px] sm:text-[10px]">{position}A</span>
+        <span className="text-[11px] sm:text-[10px]">{position}B</span>
       </div>
 
       {/* Tandem breaker body - split into two halves */}
-      <div className="flex-1 mx-1 flex flex-col gap-0.5 relative">
+      <div className="flex-1 mx-1 flex flex-col gap-0.5 sm:gap-0.5 relative">
         {/* Tandem indicator badge */}
         <div className={cn(
           "absolute -top-1 z-10 px-1 py-0.5 rounded text-[7px] font-bold bg-indigo-500 text-white shadow-sm",

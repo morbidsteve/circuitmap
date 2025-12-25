@@ -274,7 +274,8 @@ export function FloorPlanEditor({ floors, breakers, panelId, panelName, mainAmpe
 
       <Card>
         <CardContent className="p-0">
-          <div className="flex min-h-[500px] h-[600px] overflow-hidden rounded-lg">
+          {/* Responsive height: shorter on mobile, taller on desktop */}
+          <div className="flex min-h-[400px] h-[calc(100vh-280px)] sm:h-[calc(100vh-240px)] max-h-[800px] overflow-hidden rounded-lg">
             {/* Breaker Sidebar */}
             <BreakerSidebar
               breakers={breakers}
@@ -316,8 +317,8 @@ export function FloorPlanEditor({ floors, breakers, panelId, panelName, mainAmpe
         </CardContent>
       </Card>
 
-      {/* Legend */}
-      <Card>
+      {/* Legend - collapsible on mobile */}
+      <Card className="hidden sm:block">
         <CardContent className="py-3">
           <div className="flex flex-wrap items-center gap-4 text-xs">
             <span className="font-medium text-muted-foreground">Device Colors by Circuit:</span>

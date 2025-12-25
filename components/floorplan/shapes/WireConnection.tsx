@@ -59,8 +59,6 @@ export function WireConnection({
   const lineRef = useRef<Konva.Shape>(null)
   const { getDeviceWithUpdates } = useFloorPlanStore()
 
-  if (!device.breakerId) return null
-
   const displayDevice = getDeviceWithUpdates(device)
 
   // Calculate device position (same logic as DeviceMarker)
@@ -103,6 +101,9 @@ export function WireConnection({
     anim.start()
     return () => { anim.stop() }
   }, [isHighlighted])
+
+  // Early return after all hooks
+  if (!device.breakerId) return null
 
   const baseOpacity = isHighlighted ? 0.85 : 0.12
   const strokeWidth = isHighlighted ? 2.5 : 1

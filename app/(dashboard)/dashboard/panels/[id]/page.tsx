@@ -679,6 +679,7 @@ export default function PanelDetailPage() {
         <TabsContent value="rooms">
           <RoomTab
             panel={panel}
+            panelId={panelId}
             initialRoomId={selectedRoomIdForNavigation}
             onEditDevice={(device, roomId) => setModalState({ type: 'editDevice', device, roomId })}
             onDeleteDevice={(device) => setModalState({ type: 'deleteDevice', device })}

@@ -276,6 +276,11 @@ pnpm lint             # Lint code
 5. Create Stripe account and products
 6. Deploy to Vercel
 
+## Git Workflow
+- After making changes (especially user-requested changes), always commit and push automatically
+- Do not wait for user to ask to commit - push changes immediately after implementation
+- Use descriptive commit messages that explain the change
+
 ## Key Implementation Notes
 
 ### Authentication Flow

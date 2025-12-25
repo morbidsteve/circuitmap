@@ -15,6 +15,8 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { PanelWithRelations, Device, RoomWithDevices, Breaker, FloorWithRooms } from '@/types/panel'
 import { getBreakerColors } from '@/lib/breakerColors'
+import { useFloorPlanStore } from '@/stores/floorPlanStore'
+import { useUpdateDevice } from '@/hooks/useDevices'
 import {
   Plus,
   Edit,
@@ -26,6 +28,8 @@ import {
   Plug,
   Home,
   ArrowUpDown,
+  Save,
+  Loader2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -48,6 +52,7 @@ function RoomCanvasLoading() {
 
 interface RoomTabProps {
   panel: PanelWithRelations
+  panelId: string
   initialRoomId?: string | null
   onEditDevice: (device: Device, roomId: string) => void
   onDeleteDevice: (device: Device) => void
@@ -84,6 +89,7 @@ const PLACEMENT_LABELS: Record<string, string> = {
 
 export function RoomTab({
   panel,
+  panelId,
   initialRoomId,
   onEditDevice,
   onDeleteDevice,
@@ -107,6 +113,7 @@ export function RoomTab({
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(
     initialRoomId ?? (allRooms.length > 0 ? allRooms[0].room.id : null)
   )
+  const [isSaving, setIsSaving] = useState(false)
 
   // Update selected room when initialRoomId changes externally
   useEffect(() => {
@@ -117,6 +124,35 @@ export function RoomTab({
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null)
   const [sortMode, setSortMode] = useState<SortMode>('type')
   const [filterMode, setFilterMode] = useState<FilterMode>('all')
+
+  // Floor plan store for pending device updates
+  const { pendingDeviceUpdates, hasUnsavedChanges, markSaved } = useFloorPlanStore()
+  const updateDevice = useUpdateDevice()
+
+  // Save handler
+  const handleSave = async () => {
+    setIsSaving(true)
+    try {
+      // Save device position updates
+      const deviceUpdatePromises = Object.entries(pendingDeviceUpdates).map(([deviceId, updates]) =>
+        updateDevice.mutateAsync({
+          id: deviceId,
+          panelId,
+          data: {
+            positionX: updates.positionX,
+            positionY: updates.positionY,
+          },
+        })
+      )
+
+      await Promise.all(deviceUpdatePromises)
+      markSaved()
+    } catch (error) {
+      console.error('Failed to save device positions:', error)
+    } finally {
+      setIsSaving(false)
+    }
+  }
 
   // Find selected room and its floor
   const selectedRoomData = allRooms.find((r) => r.room.id === selectedRoomId)
@@ -232,10 +268,26 @@ export function RoomTab({
           )}
         </div>
 
-        <Button onClick={() => selectedRoomId && onAddDevice(selectedRoomId)} disabled={!selectedRoomId}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Device
-        </Button>
+        <div className="flex items-center gap-2">
+          {hasUnsavedChanges && (
+            <Button
+              onClick={handleSave}
+              disabled={isSaving}
+              variant="default"
+            >
+              {isSaving ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Save className="h-4 w-4 mr-2" />
+              )}
+              {isSaving ? 'Saving...' : 'Save Positions'}
+            </Button>
+          )}
+          <Button onClick={() => selectedRoomId && onAddDevice(selectedRoomId)} disabled={!selectedRoomId}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Device
+          </Button>
+        </div>
       </div>
 
       {/* Room Info Header */}

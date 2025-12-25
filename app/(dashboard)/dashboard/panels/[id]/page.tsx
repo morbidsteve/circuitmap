@@ -640,6 +640,8 @@ export default function PanelDetailPage() {
             floors={panel.floors}
             breakers={panel.breakers}
             panelId={panelId}
+            panelName={panel.name}
+            mainAmperage={panel.mainAmperage}
           />
         </TabsContent>
 

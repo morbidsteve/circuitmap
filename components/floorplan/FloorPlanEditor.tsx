@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { FloorWithRooms, Breaker } from '@/types/panel'
 import { useFloorPlanStore } from '@/stores/floorPlanStore'
 import { FloorPlanToolbar } from './FloorPlanToolbar'
+import { BreakerSidebar } from './BreakerSidebar'
 import { useUpdateRoom } from '@/hooks/useRooms'
 import { useUpdateDevice } from '@/hooks/useDevices'
 import { useWalls, useCreateManyWalls, useUpdateWall, useDeleteWall } from '@/hooks/useWalls'
@@ -64,12 +65,29 @@ interface FloorPlanEditorProps {
   floors: FloorWithRooms[]
   breakers: Breaker[]
   panelId: string
+  panelName?: string
+  mainAmperage?: number
 }
 
-export function FloorPlanEditor({ floors, breakers, panelId }: FloorPlanEditorProps) {
+export function FloorPlanEditor({ floors, breakers, panelId, panelName, mainAmperage }: FloorPlanEditorProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [canvasSize, setCanvasSize] = useState({ width: 800, height: 500 })
   const [isSaving, setIsSaving] = useState(false)
+  // Auto-collapse sidebar on mobile (< 768px)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(
+    typeof window !== 'undefined' ? window.innerWidth < 768 : false
+  )
+
+  // Handle responsive sidebar on resize
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 768) {
+        setSidebarCollapsed(true)
+      }
+    }
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   const updateRoom = useUpdateRoom()
   const updateDevice = useUpdateDevice()
@@ -254,27 +272,40 @@ export function FloorPlanEditor({ floors, breakers, panelId }: FloorPlanEditorPr
       />
 
       <Card>
-        <CardContent className="p-2">
-          <div ref={containerRef} className="relative min-h-[500px] h-[600px] bg-white rounded overflow-hidden">
-            {viewMode === '2d' && selectedFloor && (
-              <FloorPlanCanvas
-                floor={selectedFloor}
-                breakers={breakers}
-                walls={walls}
-                width={canvasSize.width}
-                height={canvasSize.height}
-              />
-            )}
-            {viewMode === '3d' && (
-              <ThreeCanvas
-                floors={floors}
-                breakers={breakers}
-                selectedFloorId={selectedFloorId}
-              />
-            )}
-            {viewMode === 'elevation' && (
-              <ElevationViewPlaceholder />
-            )}
+        <CardContent className="p-0">
+          <div className="flex min-h-[500px] h-[600px] overflow-hidden rounded-lg">
+            {/* Breaker Sidebar */}
+            <BreakerSidebar
+              breakers={breakers}
+              floors={floors}
+              panelName={panelName}
+              mainAmperage={mainAmperage}
+              isCollapsed={sidebarCollapsed}
+              onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+            />
+
+            {/* Canvas Area */}
+            <div ref={containerRef} className="relative flex-1 bg-white overflow-hidden">
+              {viewMode === '2d' && selectedFloor && (
+                <FloorPlanCanvas
+                  floor={selectedFloor}
+                  breakers={breakers}
+                  walls={walls}
+                  width={canvasSize.width}
+                  height={canvasSize.height}
+                />
+              )}
+              {viewMode === '3d' && (
+                <ThreeCanvas
+                  floors={floors}
+                  breakers={breakers}
+                  selectedFloorId={selectedFloorId}
+                />
+              )}
+              {viewMode === 'elevation' && (
+                <ElevationViewPlaceholder />
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>

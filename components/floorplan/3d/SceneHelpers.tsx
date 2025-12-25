@@ -77,7 +77,7 @@ export function ScaleReference({ position = [0, 0, 0] as [number, number, number
             color="#666666"
             anchorX="left"
           >
-            {ft}'
+            {`${ft}′`}
           </Text>
         </group>
       ))}
@@ -100,7 +100,7 @@ export function ScaleReference({ position = [0, 0, 0] as [number, number, number
           color="#64748b"
           anchorX="center"
         >
-          5'6"
+          {`5′6″`}
         </Text>
       </group>
     </group>
@@ -125,7 +125,7 @@ export function LabeledGrid({ size = 50, divisions = 10 }: { size?: number; divi
             color="#666666"
             anchorX="center"
           >
-            {x.toFixed(0)}'
+            {`${x.toFixed(0)}′`}
           </Text>
         );
       })}
@@ -142,7 +142,7 @@ export function LabeledGrid({ size = 50, divisions = 10 }: { size?: number; divi
             color="#666666"
             anchorX="center"
           >
-            {z.toFixed(0)}'
+            {`${z.toFixed(0)}′`}
           </Text>
         );
       })}
@@ -235,7 +235,7 @@ export function FloorIndicator({ floors, selectedFloorId, ceilingHeight, floorSp
               color="#94a3b8"
               anchorX="right"
             >
-              {y.toFixed(0)}' from ground
+              {`${y.toFixed(0)}′ from ground`}
             </Text>
           </group>
         );
@@ -244,4 +244,3 @@ export function FloorIndicator({ floors, selectedFloorId, ceilingHeight, floorSp
   );
 }
 
-export default { AxisHelper, ScaleReference, LabeledGrid, CompassIndicator, FloorIndicator };

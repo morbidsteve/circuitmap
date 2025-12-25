@@ -150,8 +150,10 @@ export function FloorPlanCanvas({ floor, breakers, walls = [], width, height, on
   }, [floor.id])
 
   // Use the layout calculation for rendering
+  // pendingRoomUpdates triggers recalculation when room positions change in the store
   const roomsWithLayout = useMemo(() => {
     return calculateRoomLayouts().map(({ needsPosition, ...room }) => room)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [calculateRoomLayouts, pendingRoomUpdates])
 
   // Calculate canvas bounds based on room layout

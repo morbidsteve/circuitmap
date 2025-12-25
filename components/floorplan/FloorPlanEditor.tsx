@@ -10,7 +10,7 @@ import { BreakerSidebar } from './BreakerSidebar'
 import { useUpdateRoom } from '@/hooks/useRooms'
 import { useUpdateDevice } from '@/hooks/useDevices'
 import { useWalls, useCreateManyWalls, useUpdateWall, useDeleteWall } from '@/hooks/useWalls'
-import { Home, MapPin, Construction } from 'lucide-react'
+import { Home, MapPin } from 'lucide-react'
 
 // Dynamic import for Konva (SSR incompatible)
 const FloorPlanCanvas = dynamic(
@@ -22,6 +22,12 @@ const FloorPlanCanvas = dynamic(
 const ThreeCanvas = dynamic(
   () => import('./3d/ThreeCanvas').then((mod) => mod.ThreeCanvas),
   { ssr: false, loading: () => <ThreeCanvasLoading /> }
+)
+
+// Dynamic import for ElevationView (uses Konva)
+const ElevationView = dynamic(
+  () => import('./ElevationView').then((mod) => mod.ElevationView),
+  { ssr: false, loading: () => <FloorPlanLoading /> }
 )
 
 function FloorPlanLoading() {
@@ -46,20 +52,6 @@ function ThreeCanvasLoading() {
   )
 }
 
-function ElevationViewPlaceholder() {
-  return (
-    <div className="flex items-center justify-center h-[500px] bg-muted/30 rounded-lg">
-      <div className="text-center">
-        <Construction className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-        <h3 className="font-semibold mb-2">Elevation View Coming Soon</h3>
-        <p className="text-muted-foreground max-w-md">
-          The elevation view will show a side profile of your electrical devices on walls,
-          displaying their heights and positions.
-        </p>
-      </div>
-    </div>
-  )
-}
 
 interface FloorPlanEditorProps {
   floors: FloorWithRooms[]
@@ -302,8 +294,12 @@ export function FloorPlanEditor({ floors, breakers, panelId, panelName, mainAmpe
                   selectedFloorId={selectedFloorId}
                 />
               )}
-              {viewMode === 'elevation' && (
-                <ElevationViewPlaceholder />
+              {viewMode === 'elevation' && selectedFloor && (
+                <ElevationView
+                  floor={selectedFloor}
+                  breakers={breakers}
+                  ceilingHeight={8}
+                />
               )}
             </div>
           </div>

@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useEffect } from 'react'
-import { Circle, Group, Text, Rect } from 'react-konva'
+import { Circle, Group, Text, Rect, Line, RegularPolygon, Arc } from 'react-konva'
 import Konva from 'konva'
 import { Device, Breaker, RoomWithDevices } from '@/types/panel'
 import { getBreakerColors } from '@/lib/breakerColors'
@@ -16,7 +16,7 @@ interface DeviceMarkerProps {
   roomOffsetY: number
   isSelected: boolean
   isHighlighted: boolean
-  isPulsingHighlight?: boolean // New: for animated highlighting
+  isPulsingHighlight?: boolean
   onSelect: () => void
   onDeviceClick?: (deviceId: string, breakerId: string | undefined) => void
 }
@@ -37,27 +37,163 @@ const DEVICE_LABELS: Record<string, string> = {
   other: 'Device',
 }
 
-const DEVICE_ICONS: Record<string, string> = {
-  outlet: '⚡',
-  light: '💡',
-  switch: '🔘',
-  appliance: '🔌',
-  fan: '🌀',
-  hvac: '❄️',
-  water_heater: '🔥',
-  dryer: '🌪️',
-  range: '🍳',
-  ev_charger: '🔋',
-  pool: '🏊',
-  smoke_detector: '🚨',
-  other: '📍',
-}
-
 // Placement indicator symbols
 const PLACEMENT_INDICATORS: Record<string, { symbol: string; color: string }> = {
-  wall: { symbol: '║', color: '#6366F1' },    // Purple/indigo for wall
-  ceiling: { symbol: '△', color: '#F59E0B' }, // Amber for ceiling
-  floor: { symbol: '▬', color: '#10B981' },   // Green for floor
+  wall: { symbol: 'W', color: '#6366F1' },
+  ceiling: { symbol: 'C', color: '#F59E0B' },
+  floor: { symbol: 'F', color: '#10B981' },
+}
+
+// Device icon component that renders distinct shapes for each device type
+function DeviceIcon({ type, color, size = 12 }: { type: string; color: string; size?: number }) {
+  const s = size
+
+  switch (type) {
+    case 'outlet':
+      // Outlet: Rectangle with two vertical slots
+      return (
+        <Group>
+          <Rect x={-s*0.6} y={-s*0.8} width={s*1.2} height={s*1.6} fill={color} cornerRadius={2} />
+          <Rect x={-s*0.3} y={-s*0.5} width={s*0.15} height={s*0.4} fill="white" />
+          <Rect x={s*0.15} y={-s*0.5} width={s*0.15} height={s*0.4} fill="white" />
+          <Rect x={-s*0.3} y={s*0.1} width={s*0.15} height={s*0.4} fill="white" />
+          <Rect x={s*0.15} y={s*0.1} width={s*0.15} height={s*0.4} fill="white" />
+        </Group>
+      )
+
+    case 'light':
+      // Light: Bulb shape (circle with base)
+      return (
+        <Group>
+          <Circle radius={s*0.7} fill={color} />
+          <Rect x={-s*0.3} y={s*0.5} width={s*0.6} height={s*0.4} fill={color} />
+          <Line points={[-s*0.4, -s*0.4, -s*0.7, -s*0.7]} stroke="white" strokeWidth={2} />
+          <Line points={[s*0.4, -s*0.4, s*0.7, -s*0.7]} stroke="white" strokeWidth={2} />
+          <Line points={[0, -s*0.6, 0, -s*0.9]} stroke="white" strokeWidth={2} />
+        </Group>
+      )
+
+    case 'switch':
+      // Switch: Rectangle with toggle circle
+      return (
+        <Group>
+          <Rect x={-s*0.5} y={-s*0.9} width={s*1} height={s*1.8} fill={color} cornerRadius={s*0.2} />
+          <Circle y={-s*0.3} radius={s*0.25} fill="white" />
+          <Rect x={-s*0.08} y={-s*0.3} width={s*0.16} height={s*0.5} fill="white" />
+        </Group>
+      )
+
+    case 'fan':
+      // Fan: Circle with blades
+      return (
+        <Group>
+          <Circle radius={s*0.8} fill={color} />
+          <Circle radius={s*0.25} fill="white" />
+          {[0, 72, 144, 216, 288].map((angle, i) => (
+            <Line
+              key={i}
+              points={[0, 0, s*0.6, 0]}
+              stroke="white"
+              strokeWidth={3}
+              rotation={angle}
+            />
+          ))}
+        </Group>
+      )
+
+    case 'hvac':
+      // HVAC: Snowflake pattern
+      return (
+        <Group>
+          <Circle radius={s*0.8} fill={color} />
+          {[0, 60, 120, 180, 240, 300].map((angle, i) => (
+            <Line
+              key={i}
+              points={[0, 0, s*0.5, 0]}
+              stroke="white"
+              strokeWidth={2}
+              rotation={angle}
+            />
+          ))}
+          <Circle radius={s*0.15} fill="white" />
+        </Group>
+      )
+
+    case 'appliance':
+    case 'range':
+    case 'dryer':
+      // Appliance: Box with plug symbol
+      return (
+        <Group>
+          <Rect x={-s*0.7} y={-s*0.7} width={s*1.4} height={s*1.4} fill={color} cornerRadius={3} />
+          <Circle radius={s*0.35} stroke="white" strokeWidth={2} fill="transparent" />
+          <Line points={[0, -s*0.35, 0, s*0.35]} stroke="white" strokeWidth={2} />
+        </Group>
+      )
+
+    case 'water_heater':
+      // Water heater: Tank with flame
+      return (
+        <Group>
+          <Rect x={-s*0.6} y={-s*0.8} width={s*1.2} height={s*1.6} fill={color} cornerRadius={s*0.3} />
+          <RegularPolygon sides={3} radius={s*0.4} fill="#FFA500" y={s*0.2} rotation={180} />
+        </Group>
+      )
+
+    case 'ev_charger':
+      // EV Charger: Lightning bolt
+      return (
+        <Group>
+          <Circle radius={s*0.8} fill={color} />
+          <Line
+            points={[s*0.1, -s*0.5, -s*0.2, 0, s*0.1, 0, -s*0.1, s*0.5]}
+            stroke="white"
+            strokeWidth={3}
+            lineCap="round"
+            lineJoin="round"
+          />
+        </Group>
+      )
+
+    case 'smoke_detector':
+      // Smoke detector: Circle with dot
+      return (
+        <Group>
+          <Circle radius={s*0.8} fill={color} />
+          <Circle radius={s*0.4} stroke="white" strokeWidth={2} fill="transparent" />
+          <Circle radius={s*0.15} fill="white" />
+        </Group>
+      )
+
+    case 'pool':
+      // Pool: Wavy lines
+      return (
+        <Group>
+          <Circle radius={s*0.8} fill={color} />
+          <Arc
+            x={-s*0.3} y={-s*0.2}
+            innerRadius={0} outerRadius={s*0.3}
+            angle={180} rotation={-90}
+            stroke="white" strokeWidth={2}
+          />
+          <Arc
+            x={s*0.3} y={s*0.1}
+            innerRadius={0} outerRadius={s*0.3}
+            angle={180} rotation={90}
+            stroke="white" strokeWidth={2}
+          />
+        </Group>
+      )
+
+    default:
+      // Other: Circle with dot
+      return (
+        <Group>
+          <Circle radius={s*0.8} fill={color} />
+          <Circle radius={s*0.3} fill="white" />
+        </Group>
+      )
+  }
 }
 
 export function DeviceMarker({
@@ -182,29 +318,25 @@ export function DeviceMarker({
         />
       )}
 
-      {/* Main circle */}
-      <Circle
-        radius={radius}
-        fill={colors.fill}
-        stroke={isUnassigned ? '#9CA3AF' : colors.stroke}
-        strokeWidth={isHighlighted ? 3 : 2}
-        dash={isUnassigned ? [4, 4] : undefined}
-        shadowColor="black"
-        shadowBlur={isHighlighted ? 8 : 4}
-        shadowOpacity={isHighlighted ? 0.4 : 0.2}
-        shadowOffsetY={2}
-      />
+      {/* Background circle for unassigned devices */}
+      {isUnassigned && (
+        <Circle
+          radius={radius}
+          fill="#F3F4F6"
+          stroke="#9CA3AF"
+          strokeWidth={2}
+          dash={[4, 4]}
+          shadowColor="black"
+          shadowBlur={4}
+          shadowOpacity={0.2}
+          shadowOffsetY={2}
+        />
+      )}
 
-      {/* Device icon/letter */}
-      <Text
-        x={-8}
-        y={-8}
-        text={device.type.charAt(0).toUpperCase()}
-        fontSize={14}
-        fill={colors.text}
-        fontStyle="bold"
-        listening={false}
-      />
+      {/* Device icon - distinct shape for each type */}
+      <Group shadowColor="black" shadowBlur={isHighlighted ? 6 : 3} shadowOpacity={0.3} shadowOffsetY={1}>
+        <DeviceIcon type={device.type} color={colors.fill} size={radius * 0.9} />
+      </Group>
 
       {/* Device label (always visible, below marker) */}
       <Text

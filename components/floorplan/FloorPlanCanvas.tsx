@@ -51,6 +51,7 @@ export function FloorPlanCanvas({ floor, breakers, walls = [], width, height, on
   const activeTool = useFloorPlanStore((state) => state.activeTool)
   const getRoomWithUpdates = useFloorPlanStore((state) => state.getRoomWithUpdates)
   const pendingRoomUpdates = useFloorPlanStore((state) => state.pendingRoomUpdates)
+  const updateRoomPosition = useFloorPlanStore((state) => state.updateRoomPosition)
   const startWallDrawing = useFloorPlanStore((state) => state.startWallDrawing)
   const updateWallPreview = useFloorPlanStore((state) => state.updateWallPreview)
   const finishWallSegment = useFloorPlanStore((state) => state.finishWallSegment)
@@ -65,11 +66,11 @@ export function FloorPlanCanvas({ floor, breakers, walls = [], width, height, on
     })
   }, [width, height])
 
-  // Auto-layout rooms that don't have positions
-  const roomsWithLayout = useMemo(() => {
-    const layoutRooms: (RoomWithDevices & { layoutX: number; layoutY: number; layoutW: number; layoutH: number })[] = []
+  // Calculate initial layout positions for rooms without explicit positions
+  // This is used both for display and to assign initial positions
+  const calculateRoomLayouts = useCallback(() => {
+    const layoutRooms: (RoomWithDevices & { layoutX: number; layoutY: number; layoutW: number; layoutH: number; needsPosition: boolean })[] = []
 
-    // Defensive: ensure rooms is an array
     const rooms = floor.rooms || []
     if (rooms.length === 0) return layoutRooms
 
@@ -80,28 +81,26 @@ export function FloorPlanCanvas({ floor, breakers, walls = [], width, height, on
 
     rooms.forEach((room) => {
       const updatedRoom = getRoomWithUpdates(room)
-      // Default room size: 12x10 feet if not specified
       const roomWidth = (updatedRoom.width ?? 12) * SCALE
       const roomHeight = (updatedRoom.height ?? 10) * SCALE
 
-      // Check if room has explicit position
       const hasPosition = updatedRoom.positionX !== undefined && updatedRoom.positionX !== null &&
                           updatedRoom.positionY !== undefined && updatedRoom.positionY !== null
 
       if (hasPosition) {
-        // Add padding offset so rooms with position (0,0) aren't at canvas edge
         layoutRooms.push({
           ...room,
           layoutX: PADDING + (updatedRoom.positionX!) * SCALE,
           layoutY: PADDING + (updatedRoom.positionY!) * SCALE,
           layoutW: roomWidth,
           layoutH: roomHeight,
+          needsPosition: false,
         })
       } else {
-        // Auto-layout: place in rows
+        // Auto-layout for rooms without positions
         if (currentX + roomWidth > maxRowWidth && currentX > PADDING) {
           currentX = PADDING
-          currentY += rowHeight + 40 // Gap between rows
+          currentY += rowHeight + 40
           rowHeight = 0
         }
 
@@ -111,15 +110,49 @@ export function FloorPlanCanvas({ floor, breakers, walls = [], width, height, on
           layoutY: currentY,
           layoutW: roomWidth,
           layoutH: roomHeight,
+          needsPosition: true, // Mark that this room needs a position assigned
         })
 
-        currentX += roomWidth + 40 // Gap between rooms
+        currentX += roomWidth + 40
         rowHeight = Math.max(rowHeight, roomHeight)
       }
     })
 
     return layoutRooms
-  }, [floor.rooms, getRoomWithUpdates, pendingRoomUpdates, stageSize.width])
+  }, [floor.rooms, getRoomWithUpdates, stageSize.width])
+
+  // Assign initial positions to rooms that don't have them
+  // This runs once when the floor is first displayed to lock in positions
+  const initialPositionsAssigned = useRef(false)
+  useEffect(() => {
+    if (initialPositionsAssigned.current) return
+
+    const layouts = calculateRoomLayouts()
+    const roomsNeedingPositions = layouts.filter(r => r.needsPosition)
+
+    if (roomsNeedingPositions.length > 0) {
+      roomsNeedingPositions.forEach(room => {
+        // Convert pixel position back to feet (remove padding, divide by scale)
+        const posX = (room.layoutX - PADDING) / SCALE
+        const posY = (room.layoutY - PADDING) / SCALE
+        updateRoomPosition(room.id, posX, posY)
+      })
+      initialPositionsAssigned.current = true
+    } else if (layouts.length > 0) {
+      // All rooms already have positions
+      initialPositionsAssigned.current = true
+    }
+  }, [calculateRoomLayouts, updateRoomPosition])
+
+  // Reset the flag when floor changes
+  useEffect(() => {
+    initialPositionsAssigned.current = false
+  }, [floor.id])
+
+  // Use the layout calculation for rendering
+  const roomsWithLayout = useMemo(() => {
+    return calculateRoomLayouts().map(({ needsPosition, ...room }) => room)
+  }, [calculateRoomLayouts, pendingRoomUpdates])
 
   // Calculate canvas bounds based on room layout
   const canvasBounds = useMemo(() => {

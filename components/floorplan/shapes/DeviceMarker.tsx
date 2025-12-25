@@ -253,13 +253,25 @@ export function DeviceMarker({
   const isUnassigned = !device.breakerId
   const breaker = breakers.find((b) => b.id === device.breakerId)
 
+  // Prevent drag events from bubbling to parent RoomShape
+  const handleDragStart = (e: Konva.KonvaEventObject<DragEvent>) => {
+    e.cancelBubble = true
+  }
+
   const handleDragEnd = (e: Konva.KonvaEventObject<DragEvent>) => {
+    e.cancelBubble = true
     const node = e.target
     // Calculate new position relative to room (in feet)
     const newRelX = (node.x() - roomOffsetX) / scale
     const newRelY = (node.y() - roomOffsetY) / scale
 
-    updateDevicePosition(device.id, Math.max(0, newRelX), Math.max(0, newRelY))
+    // Clamp to reasonable bounds (0 to room size)
+    const roomWidth = room.width || 12
+    const roomHeight = room.height || 10
+    const clampedX = Math.max(0, Math.min(roomWidth, newRelX))
+    const clampedY = Math.max(0, Math.min(roomHeight, newRelY))
+
+    updateDevicePosition(device.id, clampedX, clampedY)
   }
 
   // Determine opacity based on highlight state
@@ -294,6 +306,7 @@ export function DeviceMarker({
       onDblClick={handleDoubleClick}
       onDblTap={handleDoubleClick}
       draggable
+      onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
       {/* Pulsing highlight ring for circuit tracing */}

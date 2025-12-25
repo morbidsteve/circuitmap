@@ -1,0 +1,7 @@
+packages:
+  # Root package (existing Next.js web app)
+  - '.'
+  # Mobile app
+  - 'apps/mobile'
+  # Shared packages
+  - 'packages/*'

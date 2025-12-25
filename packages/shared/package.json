@@ -1,0 +1,29 @@
+{
+  "name": "@circuitmap/shared",
+  "version": "1.0.0",
+  "private": true,
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "exports": {
+    ".": "./index.ts",
+    "./types": "./types/index.ts",
+    "./types/*": "./types/*.ts",
+    "./stores": "./stores/index.ts",
+    "./stores/*": "./stores/*.ts",
+    "./hooks": "./hooks/index.ts",
+    "./hooks/*": "./hooks/*.ts",
+    "./lib": "./lib/index.ts",
+    "./lib/*": "./lib/*.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "react": ">=18.0.0",
+    "zustand": ">=4.0.0",
+    "@tanstack/react-query": ">=5.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}

@@ -299,11 +299,20 @@ export function DeviceForm({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="__none__">Not assigned</SelectItem>
-            {breakers.map((b) => (
-              <SelectItem key={b.id} value={b.id}>
-                #{b.position} - {b.label} ({b.amperage}A)
-              </SelectItem>
-            ))}
+            {[...breakers]
+              .sort((a, b) => {
+                // Extract numeric part for sorting (handles "1", "2", "3A", "14A/14B", etc.)
+                const numA = parseInt(a.position.replace(/[^\d]/g, '') || '0', 10)
+                const numB = parseInt(b.position.replace(/[^\d]/g, '') || '0', 10)
+                if (numA !== numB) return numA - numB
+                // If same number, sort alphabetically (e.g., "3A" before "3B")
+                return a.position.localeCompare(b.position)
+              })
+              .map((b) => (
+                <SelectItem key={b.id} value={b.id}>
+                  #{b.position} - {b.label} ({b.amperage}A)
+                </SelectItem>
+              ))}
           </SelectContent>
         </Select>
       </div>

@@ -213,7 +213,10 @@ export function DeviceMarker({
 }: DeviceMarkerProps) {
   const groupRef = useRef<Konva.Group>(null)
   const pulseRef = useRef<Konva.Circle>(null)
-  const { getDeviceWithUpdates, updateDevicePosition, highlightDevice } = useFloorPlanStore()
+
+  // Use selectors to prevent re-renders when unrelated store state changes
+  const getDeviceWithUpdates = useFloorPlanStore((state) => state.getDeviceWithUpdates)
+  const updateDevicePosition = useFloorPlanStore((state) => state.updateDevicePosition)
 
   const displayDevice = getDeviceWithUpdates(device)
 

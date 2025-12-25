@@ -34,7 +34,10 @@ export function RoomShape({
   const trRef = useRef<Konva.Transformer>(null)
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
 
-  const { updateRoomPosition, updateRoomSize, activeTool } = useFloorPlanStore()
+  // Use selectors to prevent re-renders when unrelated store state changes
+  const updateRoomPosition = useFloorPlanStore((state) => state.updateRoomPosition)
+  const updateRoomSize = useFloorPlanStore((state) => state.updateRoomSize)
+  const activeTool = useFloorPlanStore((state) => state.activeTool)
 
   // Attach transformer when selected
   useEffect(() => {

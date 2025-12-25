@@ -33,29 +33,28 @@ export function FloorPlanCanvas({ floor, breakers, walls = [], width, height, on
     height: Math.max(height, 400)
   })
 
-  const {
-    zoom,
-    panOffset,
-    setZoom,
-    setPanOffset,
-    snapToGrid,
-    showWires,
-    selectedRoomId,
-    selectedDeviceId,
-    selectedWallId,
-    highlightedBreakerId,
-    selectRoom,
-    selectDevice,
-    selectWall,
-    clearSelection,
-    activeTool,
-    getRoomWithUpdates,
-    startWallDrawing,
-    updateWallPreview,
-    finishWallSegment,
-    cancelWallDrawing,
-    wallDrawingState,
-  } = useFloorPlanStore()
+  // Use individual selectors to prevent re-renders when unrelated state changes
+  const zoom = useFloorPlanStore((state) => state.zoom)
+  const panOffset = useFloorPlanStore((state) => state.panOffset)
+  const setZoom = useFloorPlanStore((state) => state.setZoom)
+  const setPanOffset = useFloorPlanStore((state) => state.setPanOffset)
+  const snapToGrid = useFloorPlanStore((state) => state.snapToGrid)
+  const showWires = useFloorPlanStore((state) => state.showWires)
+  const selectedRoomId = useFloorPlanStore((state) => state.selectedRoomId)
+  const selectedDeviceId = useFloorPlanStore((state) => state.selectedDeviceId)
+  const selectedWallId = useFloorPlanStore((state) => state.selectedWallId)
+  const highlightedBreakerId = useFloorPlanStore((state) => state.highlightedBreakerId)
+  const selectRoom = useFloorPlanStore((state) => state.selectRoom)
+  const selectDevice = useFloorPlanStore((state) => state.selectDevice)
+  const selectWall = useFloorPlanStore((state) => state.selectWall)
+  const clearSelection = useFloorPlanStore((state) => state.clearSelection)
+  const activeTool = useFloorPlanStore((state) => state.activeTool)
+  const getRoomWithUpdates = useFloorPlanStore((state) => state.getRoomWithUpdates)
+  const startWallDrawing = useFloorPlanStore((state) => state.startWallDrawing)
+  const updateWallPreview = useFloorPlanStore((state) => state.updateWallPreview)
+  const finishWallSegment = useFloorPlanStore((state) => state.finishWallSegment)
+  const cancelWallDrawing = useFloorPlanStore((state) => state.cancelWallDrawing)
+  const wallDrawingState = useFloorPlanStore((state) => state.wallDrawingState)
 
   // Update stage size when container resizes
   useEffect(() => {
@@ -260,14 +259,11 @@ export function FloorPlanCanvas({ floor, breakers, walls = [], width, height, on
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [wallDrawingState.isDrawing, cancelWallDrawing])
 
-  // Get highlighting state from store
-  const {
-    highlightMode,
-    highlightedDeviceId,
-    highlightedCircuitDeviceIds,
-    highlightBreaker,
-    highlightDevice,
-  } = useFloorPlanStore()
+  // Get highlighting state from store (using selectors)
+  const highlightMode = useFloorPlanStore((state) => state.highlightMode)
+  const highlightedDeviceId = useFloorPlanStore((state) => state.highlightedDeviceId)
+  const highlightedCircuitDeviceIds = useFloorPlanStore((state) => state.highlightedCircuitDeviceIds)
+  const highlightDevice = useFloorPlanStore((state) => state.highlightDevice)
 
   // Determine if a device should be highlighted based on current mode
   const shouldHighlightDevice = (device: Device) => {

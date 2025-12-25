@@ -22,6 +22,7 @@ interface PanelViewProps {
   mainAmperage?: number;
   selectedBreakerId?: string;
   onBreakerClick?: (breakerId: string) => void;
+  onBreakerDoubleClick?: (breaker: Breaker) => void;
   onEmptySlotClick?: (position: string) => void;
   onBreakerMove?: (breakerId: string, newPosition: string) => void;
 }
@@ -32,6 +33,7 @@ export function PanelView({
   mainAmperage,
   selectedBreakerId,
   onBreakerClick,
+  onBreakerDoubleClick,
   onEmptySlotClick,
   onBreakerMove,
 }: PanelViewProps) {
@@ -259,6 +261,7 @@ export function PanelView({
                         selectedBreakerId={selectedBreakerId}
                         activeId={activeId}
                         onBreakerClick={onBreakerClick}
+                        onBreakerDoubleClick={onBreakerDoubleClick}
                       />
                     </DroppableSlot>
                   );
@@ -274,6 +277,7 @@ export function PanelView({
                         isSelected={slot.id === selectedBreakerId}
                         isDragging={activeId === slot.id}
                         onClick={() => onBreakerClick?.(slot.id)}
+                        onDoubleClick={() => onBreakerDoubleClick?.(slot)}
                       />
                     ) : (
                       <BreakerSlot
@@ -314,6 +318,7 @@ export function PanelView({
                         selectedBreakerId={selectedBreakerId}
                         activeId={activeId}
                         onBreakerClick={onBreakerClick}
+                        onBreakerDoubleClick={onBreakerDoubleClick}
                       />
                     </DroppableSlot>
                   );
@@ -329,6 +334,7 @@ export function PanelView({
                         isSelected={slot.id === selectedBreakerId}
                         isDragging={activeId === slot.id}
                         onClick={() => onBreakerClick?.(slot.id)}
+                        onDoubleClick={() => onBreakerDoubleClick?.(slot)}
                       />
                     ) : (
                       <BreakerSlot

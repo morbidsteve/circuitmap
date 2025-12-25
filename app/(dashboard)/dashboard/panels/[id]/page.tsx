@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { PanelView } from '@/components/panel/PanelView'
 import { CircuitView } from '@/components/panel/CircuitView'
@@ -93,6 +93,7 @@ type ModalState =
 export default function PanelDetailPage() {
   const params = useParams()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const panelId = params.id as string
 
   const { data: panel, isLoading } = usePanel(panelId)
@@ -113,17 +114,54 @@ export default function PanelDetailPage() {
   const updateDevice = useUpdateDevice()
   const deleteDevice = useDeleteDevice()
 
-  const [selectedBreakerId, setSelectedBreakerId] = useState<string>()
+  // Read initial state from URL params
+  const initialTab = searchParams.get('tab') || 'breakers'
+  const initialRoomId = searchParams.get('room')
+  const initialFloorId = searchParams.get('floor')
+  const initialBreakerId = searchParams.get('breaker')
+
+  const [selectedBreakerId, setSelectedBreakerId] = useState<string | undefined>(initialBreakerId || undefined)
   const [modalState, setModalState] = useState<ModalState>({ type: 'none' })
   const [expandedFloors, setExpandedFloors] = useState<Set<string>>(new Set())
-  const [activeTab, setActiveTab] = useState('breakers')
-  const [selectedRoomIdForNavigation, setSelectedRoomIdForNavigation] = useState<string | null>(null)
-  const [selectedFloorIdForNavigation, setSelectedFloorIdForNavigation] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState(initialTab)
+  const [selectedRoomIdForNavigation, setSelectedRoomIdForNavigation] = useState<string | null>(initialRoomId)
+  const [selectedFloorIdForNavigation, setSelectedFloorIdForNavigation] = useState<string | null>(initialFloorId)
   // Device tab state
   const [deviceFilter, setDeviceFilter] = useState<'all' | 'unassigned' | string>('all')
   const [deviceGroupBy, setDeviceGroupBy] = useState<'none' | 'type' | 'room' | 'floor' | 'breaker'>('none')
   const [deviceSortBy, setDeviceSortBy] = useState<'name' | 'type' | 'location'>('name')
   const hasMigratedTandems = useRef(false)
+
+  // Helper to update URL without navigation
+  const updateUrlParams = useCallback((updates: Record<string, string | null>) => {
+    const newParams = new URLSearchParams(searchParams.toString())
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value === null) {
+        newParams.delete(key)
+      } else {
+        newParams.set(key, value)
+      }
+    })
+    const newUrl = `${window.location.pathname}?${newParams.toString()}`
+    window.history.replaceState({}, '', newUrl)
+  }, [searchParams])
+
+  // Sync state changes to URL
+  useEffect(() => {
+    updateUrlParams({ tab: activeTab })
+  }, [activeTab, updateUrlParams])
+
+  useEffect(() => {
+    updateUrlParams({ room: selectedRoomIdForNavigation })
+  }, [selectedRoomIdForNavigation, updateUrlParams])
+
+  useEffect(() => {
+    updateUrlParams({ floor: selectedFloorIdForNavigation })
+  }, [selectedFloorIdForNavigation, updateUrlParams])
+
+  useEffect(() => {
+    updateUrlParams({ breaker: selectedBreakerId || null })
+  }, [selectedBreakerId, updateUrlParams])
 
   // Auto-migrate any combined tandem breakers (e.g., "14A/14B") to separate records
   useEffect(() => {
@@ -331,6 +369,9 @@ export default function PanelDetailPage() {
                 mainAmperage={panel.mainAmperage}
                 selectedBreakerId={selectedBreakerId}
                 onBreakerClick={setSelectedBreakerId}
+                onBreakerDoubleClick={(breaker) =>
+                  setModalState({ type: 'editBreaker', breaker })
+                }
                 onEmptySlotClick={(position) =>
                   setModalState({ type: 'createBreaker', position })
                 }
@@ -686,6 +727,7 @@ export default function PanelDetailPage() {
             onDeleteDevice={(device) => setModalState({ type: 'deleteDevice', device })}
             onAddDevice={(roomId) => setModalState({ type: 'createDevice', roomId })}
             onEditRoom={(room, floorId) => setModalState({ type: 'editRoom', room, floorId })}
+            onRoomChange={setSelectedRoomIdForNavigation}
           />
         </TabsContent>
 

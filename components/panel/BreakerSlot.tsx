@@ -1,5 +1,6 @@
 'use client';
 
+import { useRef, useCallback } from 'react';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { Breaker } from '@/types/panel';
@@ -205,6 +206,7 @@ export function BreakerSlot({ breaker, position, side, isSelected, onClick }: Br
 interface DraggableBreakerSlotProps extends Omit<BreakerSlotProps, 'breaker'> {
   breaker: Breaker;
   isDragging?: boolean;
+  onDoubleClick?: () => void;
 }
 
 export function DraggableBreakerSlot({
@@ -214,6 +216,7 @@ export function DraggableBreakerSlot({
   isSelected,
   isDragging,
   onClick,
+  onDoubleClick,
 }: DraggableBreakerSlotProps) {
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id: breaker.id,
@@ -222,6 +225,31 @@ export function DraggableBreakerSlot({
   const style = {
     transform: CSS.Translate.toString(transform),
   };
+
+  // Double-click detection with timer (more reliable with dnd-kit)
+  const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const clickCountRef = useRef(0);
+
+  const handleClick = useCallback((e: React.MouseEvent) => {
+    clickCountRef.current += 1;
+
+    if (clickCountRef.current === 1) {
+      // First click - set timeout to handle single click
+      clickTimeoutRef.current = setTimeout(() => {
+        if (clickCountRef.current === 1) {
+          onClick?.();
+        }
+        clickCountRef.current = 0;
+      }, 250);
+    } else if (clickCountRef.current === 2) {
+      // Second click - it's a double-click
+      if (clickTimeoutRef.current) {
+        clearTimeout(clickTimeoutRef.current);
+      }
+      clickCountRef.current = 0;
+      onDoubleClick?.();
+    }
+  }, [onClick, onDoubleClick]);
 
   const protectionIcon = getProtectionIcon(breaker.protectionType);
   const circuitColor = getCircuitTypeColor(breaker.circuitType);
@@ -258,7 +286,7 @@ export function DraggableBreakerSlot({
         side === 'left' ? 'flex-row' : 'flex-row-reverse',
         isDragging && "opacity-50"
       )}
-      onClick={onClick}
+      onClick={handleClick}
     >
       {positionNumber}
 
@@ -382,6 +410,7 @@ interface TandemBreakerSlotProps {
   selectedBreakerId?: string;
   activeId?: string | null;
   onBreakerClick?: (breakerId: string) => void;
+  onBreakerDoubleClick?: (breaker: Breaker) => void;
 }
 
 export function TandemBreakerSlot({
@@ -390,6 +419,7 @@ export function TandemBreakerSlot({
   side,
   selectedBreakerId,
   onBreakerClick,
+  onBreakerDoubleClick,
 }: TandemBreakerSlotProps) {
   // Sort breakers by their suffix (A before B)
   const sortedBreakers = [...breakers].sort((a, b) => {
@@ -438,6 +468,7 @@ export function TandemBreakerSlot({
             : 'from-gray-400 to-gray-500 opacity-70'
         )}
         onClick={() => onBreakerClick?.(breaker.id)}
+        onDoubleClick={() => onBreakerDoubleClick?.(breaker)}
       >
         {/* Circuit type color bar */}
         <div

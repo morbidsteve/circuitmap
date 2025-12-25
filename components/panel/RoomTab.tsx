@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import dynamic from 'next/dynamic'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -58,6 +58,7 @@ interface RoomTabProps {
   onDeleteDevice: (device: Device) => void
   onAddDevice: (roomId: string) => void
   onEditRoom: (room: RoomWithDevices, floorId: string) => void
+  onRoomChange?: (roomId: string | null) => void
 }
 
 type SortMode = 'type' | 'breaker' | 'name'
@@ -95,6 +96,7 @@ export function RoomTab({
   onDeleteDevice,
   onAddDevice,
   onEditRoom,
+  onRoomChange,
 }: RoomTabProps) {
   // Build flat list of all rooms grouped by floor
   const allRooms = useMemo(() => {
@@ -110,15 +112,21 @@ export function RoomTab({
   }, [panel.floors])
 
   // Selected room state - use initialRoomId if provided, otherwise first room
-  const [selectedRoomId, setSelectedRoomId] = useState<string | null>(
+  const [selectedRoomId, setSelectedRoomIdInternal] = useState<string | null>(
     initialRoomId ?? (allRooms.length > 0 ? allRooms[0].room.id : null)
   )
   const [isSaving, setIsSaving] = useState(false)
 
+  // Wrapper to notify parent of room changes
+  const setSelectedRoomId = useCallback((roomId: string | null) => {
+    setSelectedRoomIdInternal(roomId)
+    onRoomChange?.(roomId)
+  }, [onRoomChange])
+
   // Update selected room when initialRoomId changes externally
   useEffect(() => {
     if (initialRoomId && allRooms.some((r) => r.room.id === initialRoomId)) {
-      setSelectedRoomId(initialRoomId)
+      setSelectedRoomIdInternal(initialRoomId)
     }
   }, [initialRoomId, allRooms])
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null)

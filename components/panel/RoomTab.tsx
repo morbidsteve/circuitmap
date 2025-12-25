@@ -302,23 +302,29 @@ export function RoomTab({
               </div>
             </div>
           </Card>
-          <Card className="p-3">
+          <Card
+            className="p-3 cursor-pointer hover:border-primary/50 transition-colors"
+            onClick={() => selectedRoom && selectedFloor && onEditRoom(selectedRoom, selectedFloor.id)}
+          >
             <div className="flex items-center gap-2">
               <Zap className="h-4 w-4 text-muted-foreground" />
               <div>
                 <div className="text-lg font-bold">{roomStats.totalWattage.toLocaleString()}W</div>
-                <div className="text-xs text-muted-foreground">Est. Load</div>
+                <div className="text-xs text-muted-foreground">Est. Load (click to edit)</div>
               </div>
             </div>
           </Card>
-          <Card className="p-3">
+          <Card
+            className="p-3 cursor-pointer hover:border-primary/50 transition-colors"
+            onClick={() => selectedRoom && selectedFloor && onEditRoom(selectedRoom, selectedFloor.id)}
+          >
             <div className="flex items-center gap-2">
               <Ruler className="h-4 w-4 text-muted-foreground" />
               <div>
                 <div className="text-lg font-bold">
                   {selectedRoom.width || 12}&apos; x {selectedRoom.height || 10}&apos;
                 </div>
-                <div className="text-xs text-muted-foreground">Dimensions</div>
+                <div className="text-xs text-muted-foreground">Dimensions (click to edit)</div>
               </div>
             </div>
           </Card>

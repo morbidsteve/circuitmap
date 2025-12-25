@@ -36,10 +36,12 @@ Wait for the build to complete (first time takes 2-3 minutes). You'll see `circu
 
 ### Default Login Credentials
 
-| Email | Password | Tier |
-|-------|----------|------|
-| `admin@circuitmap.com` | `admin123` | Premium |
-| `demo@circuitmap.com` | `demo123` | Pro |
+| Email | Password | Tier | Role |
+|-------|----------|------|------|
+| `admin@circuitmap.com` | `admin123` | Premium | Admin |
+| `demo@circuitmap.com` | `demo123` | Pro | User |
+
+> **Note:** The admin user has access to the Admin dashboard for user management.
 
 ---
 
@@ -185,24 +187,55 @@ circuitmap/
 
 ## Features
 
-### Working Now
-- Interactive electrical panel visualization
+### Panel Management
+- Interactive electrical panel visualization with realistic design
 - Breaker CRUD (create, read, update, delete)
 - Drag-and-drop breaker reordering
 - Multi-pole breaker support (240V circuits)
-- Circuit type color coding
+- Tandem breaker support (two circuits in one slot)
+- Circuit type color coding (lighting, outlets, HVAC, kitchen, etc.)
 - GFCI/AFCI protection indicators
-- Device tracking per circuit
-- User authentication
-- Dashboard with settings
+- Double-click to edit breakers
+
+### Floor Plan Editor
+- 2D floor plan with drag-and-drop rooms
+- Room creation, resizing, and positioning
+- Device placement within rooms
+- Visual circuit tracing (wires from breakers to devices)
+- Room-focused view for managing devices
+
+### 3D Visualization
+- Full 3D view of your home with rooms and devices
+- Keyboard navigation (WASD + Q/E for movement)
+- Multiple camera presets (isometric, top, front, side)
+- Scale reference with human figure
+- Floor level indicators
+- Labeled distance grid
+
+### Device Management
+- Device CRUD (outlets, lights, switches, appliances)
+- Batch device creation (add multiple at once)
+- Device height and placement tracking
+- Breaker assignment for each device
+- Estimated load calculations
+
+### User Features
+- User authentication (email/password)
+- Subscription tiers (Free, Pro, Premium)
+- Admin dashboard for user management
+- Settings and billing pages
+- URL-based state persistence (refresh keeps your location)
+
+### Import/Export
+- Panel data export (JSON)
+- Panel data import
 
 ### Coming Soon
-- Floor plan editor with room shapes
-- Device placement on floor plans
-- Circuit tracing visualization
-- Photo attachments
+- Photo attachments for devices
 - PDF export
-- Subscription billing
+- NEC code warnings
+- Share read-only links
+- Multi-user access
 
 ---
 
@@ -216,6 +249,9 @@ circuitmap/
 - **Auth:** NextAuth.js
 - **State:** Zustand
 - **Drag & Drop:** dnd-kit
+- **2D Canvas:** Konva / react-konva
+- **3D Visualization:** Three.js / React Three Fiber
+- **Payments:** Stripe (checkout, billing portal, webhooks)
 
 ---
 

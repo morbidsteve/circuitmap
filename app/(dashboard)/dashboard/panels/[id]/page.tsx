@@ -64,6 +64,8 @@ import {
   Filter,
   Group,
   ArrowUpDown,
+  FileText,
+  Loader2,
 } from 'lucide-react'
 import {
   DropdownMenu,
@@ -131,6 +133,8 @@ export default function PanelDetailPage() {
   const [deviceGroupBy, setDeviceGroupBy] = useState<'none' | 'type' | 'room' | 'floor' | 'breaker'>('none')
   const [deviceSortBy, setDeviceSortBy] = useState<'name' | 'type' | 'location'>('name')
   const hasMigratedTandems = useRef(false)
+  // PDF export state
+  const [isExportingPDF, setIsExportingPDF] = useState(false)
 
   // Helper to update URL without navigation
   const updateUrlParams = useCallback((updates: Record<string, string | null>) => {
@@ -277,6 +281,36 @@ export default function PanelDetailPage() {
     setActiveTab('floorplan')
   }
 
+  // PDF Export handler
+  const handleExportPDF = async () => {
+    setIsExportingPDF(true)
+    try {
+      const response = await fetch(`/api/panels/${panelId}/export-pdf`, {
+        method: 'GET',
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to generate PDF')
+      }
+
+      // Get the blob and create download link
+      const blob = await response.blob()
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `circuitmap-${panel?.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-${new Date().toISOString().split('T')[0]}.pdf`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+    } catch (error) {
+      console.error('PDF export failed:', error)
+      alert('Failed to export PDF. Please try again.')
+    } finally {
+      setIsExportingPDF(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -298,17 +332,32 @@ export default function PanelDetailPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              // Download export file
-              window.location.href = `/api/panels/${panelId}/export`;
-            }}
-          >
-            <Download className="h-4 w-4 mr-2" />
-            Export
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" disabled={isExportingPDF}>
+                {isExportingPDF ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Download className="h-4 w-4 mr-2" />
+                )}
+                Export
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleExportPDF} disabled={isExportingPDF}>
+                <FileText className="h-4 w-4 mr-2" />
+                Export as PDF
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => {
+                  window.location.href = `/api/panels/${panelId}/export`
+                }}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Export as JSON
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button variant="outline" size="sm" onClick={() => setModalState({ type: 'editPanel' })}>
             <Edit className="h-4 w-4 mr-2" />
             Edit

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
 import { Card, CardContent } from '@/components/ui/card'
-import { FloorWithRooms, Breaker } from '@/types/panel'
+import { FloorWithRooms, Breaker, Device } from '@/types/panel'
 import { useFloorPlanStore } from '@/stores/floorPlanStore'
 import { FloorPlanToolbar } from './FloorPlanToolbar'
 import { BreakerSidebar } from './BreakerSidebar'
@@ -60,9 +60,10 @@ interface FloorPlanEditorProps {
   panelName?: string
   mainAmperage?: number
   initialFloorId?: string | null
+  onDeviceDoubleClick?: (device: Device, roomId: string) => void
 }
 
-export function FloorPlanEditor({ floors, breakers, panelId, panelName, mainAmperage, initialFloorId }: FloorPlanEditorProps) {
+export function FloorPlanEditor({ floors, breakers, panelId, panelName, mainAmperage, initialFloorId, onDeviceDoubleClick }: FloorPlanEditorProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [canvasSize, setCanvasSize] = useState({ width: 800, height: 500 })
   const [isSaving, setIsSaving] = useState(false)
@@ -293,6 +294,7 @@ export function FloorPlanEditor({ floors, breakers, panelId, panelName, mainAmpe
                   walls={walls}
                   width={canvasSize.width}
                   height={canvasSize.height}
+                  onDeviceDoubleClick={onDeviceDoubleClick}
                 />
               )}
               {viewMode === '3d' && (

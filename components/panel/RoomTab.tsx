@@ -356,6 +356,7 @@ export function RoomTab({
                 selectedDeviceId={selectedDeviceId}
                 onDeviceSelect={handleDeviceSelect}
                 onDeviceMove={handleDeviceMove}
+                onDeviceDoubleClick={onEditDevice}
                 width={500}
                 height={500}
               />

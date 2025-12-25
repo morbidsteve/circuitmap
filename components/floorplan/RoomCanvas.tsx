@@ -14,6 +14,7 @@ interface RoomCanvasProps {
   selectedDeviceId: string | null
   onDeviceSelect: (deviceId: string) => void
   onDeviceMove: (deviceId: string, x: number, y: number) => void
+  onDeviceDoubleClick?: (device: Device, roomId: string) => void
   width: number
   height: number
 }
@@ -51,6 +52,7 @@ export function RoomCanvas({
   selectedDeviceId,
   onDeviceSelect,
   onDeviceMove,
+  onDeviceDoubleClick,
   width,
   height,
 }: RoomCanvasProps) {
@@ -269,6 +271,8 @@ export function RoomCanvas({
                 onDragEnd={(e) => handleDeviceDragEnd(device, e)}
                 onClick={() => onDeviceSelect(device.id)}
                 onTap={() => onDeviceSelect(device.id)}
+                onDblClick={() => onDeviceDoubleClick?.(device, room.id)}
+                onDblTap={() => onDeviceDoubleClick?.(device, room.id)}
               >
                 {/* Selection ring */}
                 {isSelected && (

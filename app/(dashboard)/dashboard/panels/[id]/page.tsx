@@ -672,6 +672,7 @@ export default function PanelDetailPage() {
             panelName={panel.name}
             mainAmperage={panel.mainAmperage}
             initialFloorId={selectedFloorIdForNavigation}
+            onDeviceDoubleClick={(device, roomId) => setModalState({ type: 'editDevice', device, roomId })}
           />
         </TabsContent>
 

@@ -17,6 +17,7 @@ interface FloorPlanCanvasProps {
   walls?: WallWithOpenings[]
   width: number
   height: number
+  onDeviceDoubleClick?: (device: Device, roomId: string) => void
 }
 
 // 1 foot = 20 pixels (reasonable scale for viewing)
@@ -24,7 +25,7 @@ const SCALE = 20
 const GRID_SIZE_FEET = 5 // Grid every 5 feet
 const PADDING = 100 // Padding around content
 
-export function FloorPlanCanvas({ floor, breakers, walls = [], width, height }: FloorPlanCanvasProps) {
+export function FloorPlanCanvas({ floor, breakers, walls = [], width, height, onDeviceDoubleClick }: FloorPlanCanvasProps) {
   const stageRef = useRef<Konva.Stage>(null)
   // Ensure minimum canvas size
   const [stageSize, setStageSize] = useState({
@@ -453,6 +454,7 @@ export function FloorPlanCanvas({ floor, breakers, walls = [], width, height }: 
                 isPulsingHighlight={shouldPulseDevice(device)}
                 onSelect={() => selectDevice(device.id)}
                 onDeviceClick={handleDeviceClick}
+                onDeviceDoubleClick={onDeviceDoubleClick}
               />
             ))}
           </RoomShape>

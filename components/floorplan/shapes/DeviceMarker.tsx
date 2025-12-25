@@ -19,6 +19,7 @@ interface DeviceMarkerProps {
   isPulsingHighlight?: boolean
   onSelect: () => void
   onDeviceClick?: (deviceId: string, breakerId: string | undefined) => void
+  onDeviceDoubleClick?: (device: Device, roomId: string) => void
 }
 
 const DEVICE_LABELS: Record<string, string> = {
@@ -208,6 +209,7 @@ export function DeviceMarker({
   isPulsingHighlight = false,
   onSelect,
   onDeviceClick,
+  onDeviceDoubleClick,
 }: DeviceMarkerProps) {
   const groupRef = useRef<Konva.Group>(null)
   const pulseRef = useRef<Konva.Circle>(null)
@@ -274,6 +276,13 @@ export function DeviceMarker({
     }
   }
 
+  // Handle double-click to open device details
+  const handleDoubleClick = () => {
+    if (onDeviceDoubleClick) {
+      onDeviceDoubleClick(device, room.id)
+    }
+  }
+
   return (
     <Group
       ref={groupRef}
@@ -282,6 +291,8 @@ export function DeviceMarker({
       opacity={opacity}
       onClick={handleClick}
       onTap={handleClick}
+      onDblClick={handleDoubleClick}
+      onDblTap={handleDoubleClick}
       draggable
       onDragEnd={handleDragEnd}
     >

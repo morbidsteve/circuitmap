@@ -7,6 +7,7 @@ import { PanelView } from '@/components/panel/PanelView'
 import { CircuitView } from '@/components/panel/CircuitView'
 import { BreakerSummaryView } from '@/components/panel/BreakerSummaryView'
 import { FloorPlanEditor } from '@/components/floorplan/FloorPlanEditor'
+import { RoomTab } from '@/components/panel/RoomTab'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -57,6 +58,7 @@ import {
   Map,
   Download,
   Scissors,
+  LayoutGrid,
 } from 'lucide-react'
 import {
   DropdownMenu,
@@ -280,6 +282,10 @@ export default function PanelDetailPage() {
           <TabsTrigger value="floorplan" className="gap-2 min-w-fit">
             <Map className="h-4 w-4" />
             <span className="hidden sm:inline">Floor Plan</span>
+          </TabsTrigger>
+          <TabsTrigger value="rooms" className="gap-2 min-w-fit">
+            <LayoutGrid className="h-4 w-4" />
+            <span className="hidden sm:inline">Rooms</span>
           </TabsTrigger>
           <TabsTrigger value="locations" className="gap-2 min-w-fit">
             <Home className="h-4 w-4" />
@@ -642,6 +648,17 @@ export default function PanelDetailPage() {
             panelId={panelId}
             panelName={panel.name}
             mainAmperage={panel.mainAmperage}
+          />
+        </TabsContent>
+
+        {/* Rooms Tab */}
+        <TabsContent value="rooms">
+          <RoomTab
+            panel={panel}
+            onEditDevice={(device, roomId) => setModalState({ type: 'editDevice', device, roomId })}
+            onDeleteDevice={(device) => setModalState({ type: 'deleteDevice', device })}
+            onAddDevice={(roomId) => setModalState({ type: 'createDevice', roomId })}
+            onEditRoom={(room, floorId) => setModalState({ type: 'editRoom', room, floorId })}
           />
         </TabsContent>
 

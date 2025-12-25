@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useEffect, useState } from 'react'
+import { useRef, useEffect, useState, memo } from 'react'
 import { Rect, Text, Group, Transformer } from 'react-konva'
 import Konva from 'konva'
 import { RoomWithDevices, Breaker, Device } from '@/types/panel'
@@ -18,7 +18,8 @@ interface RoomShapeProps {
   children?: React.ReactNode
 }
 
-export function RoomShape({
+// Use memo to prevent re-renders when parent re-renders due to device position changes
+export const RoomShape = memo(function RoomShape({
   room,
   scale,
   layoutX,
@@ -68,8 +69,8 @@ export function RoomShape({
     const newX = Math.max(0, (node.x() - PADDING) / scale)
     const newY = Math.max(0, (node.y() - PADDING) / scale)
     updateRoomPosition(room.id, newX, newY)
-    // Reset drag offset since the layout will update
-    setDragOffset({ x: 0, y: 0 })
+    // Don't reset dragOffset here - let the useEffect handle it when layoutX/layoutY update
+    // This prevents the room from snapping back before the store update triggers a re-render
   }
 
   const handleTransformEnd = () => {
@@ -205,4 +206,4 @@ export function RoomShape({
       )}
     </>
   )
-}
+})

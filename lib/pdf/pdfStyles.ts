@@ -10,33 +10,38 @@ export const PAGE = {
   CONTENT_WIDTH: 512, // 612 - 50*2
 } as const;
 
-// Colors (RGB values 0-255)
+// Helper to convert RGB to hex
+function rgbToHex(r: number, g: number, b: number): string {
+  return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
+}
+
+// Colors as hex strings (more compatible with PDFKit)
 export const COLORS = {
-  primary: [59, 130, 246] as [number, number, number],      // Blue-500
-  secondary: [100, 116, 139] as [number, number, number],   // Slate-500
-  success: [34, 197, 94] as [number, number, number],       // Green-500
-  warning: [234, 179, 8] as [number, number, number],       // Yellow-500
-  danger: [239, 68, 68] as [number, number, number],        // Red-500
-  muted: [148, 163, 184] as [number, number, number],       // Slate-400
-  dark: [30, 41, 59] as [number, number, number],           // Slate-800
-  light: [241, 245, 249] as [number, number, number],       // Slate-100
-  white: [255, 255, 255] as [number, number, number],
-  black: [0, 0, 0] as [number, number, number],
+  primary: '#3B82F6',      // Blue-500
+  secondary: '#64748B',    // Slate-500
+  success: '#22C55E',      // Green-500
+  warning: '#EAB308',      // Yellow-500
+  danger: '#EF4444',       // Red-500
+  muted: '#94A3B8',        // Slate-400
+  dark: '#1E293B',         // Slate-800
+  light: '#F1F5F9',        // Slate-100
+  white: '#FFFFFF',
+  black: '#000000',
 
   // Circuit type colors
   circuit: {
-    general: [59, 130, 246] as [number, number, number],    // Blue
-    lighting: [234, 179, 8] as [number, number, number],    // Yellow
-    kitchen: [249, 115, 22] as [number, number, number],    // Orange
-    bathroom: [6, 182, 212] as [number, number, number],    // Cyan
-    appliance: [239, 68, 68] as [number, number, number],   // Red
-    hvac: [168, 85, 247] as [number, number, number],       // Purple
-    outdoor: [34, 197, 94] as [number, number, number],     // Green
-    garage: [100, 116, 139] as [number, number, number],    // Slate
-    dryer: [220, 38, 38] as [number, number, number],       // Red-600
-    range: [185, 28, 28] as [number, number, number],       // Red-700
-    ev_charger: [16, 185, 129] as [number, number, number], // Emerald
-    other: [107, 114, 128] as [number, number, number],     // Gray
+    general: '#3B82F6',    // Blue
+    lighting: '#EAB308',   // Yellow
+    kitchen: '#F97316',    // Orange
+    bathroom: '#06B6D4',   // Cyan
+    appliance: '#EF4444',  // Red
+    hvac: '#A855F7',       // Purple
+    outdoor: '#22C55E',    // Green
+    garage: '#64748B',     // Slate
+    dryer: '#DC2626',      // Red-600
+    range: '#B91C1C',      // Red-700
+    ev_charger: '#10B981', // Emerald
+    other: '#6B7280',      // Gray
   },
 } as const;
 
@@ -70,7 +75,7 @@ export const TABLE = {
 } as const;
 
 // Get circuit type color
-export function getCircuitColor(circuitType: string): [number, number, number] {
+export function getCircuitColor(circuitType: string): string {
   const type = circuitType?.toLowerCase() || 'other';
   return COLORS.circuit[type as keyof typeof COLORS.circuit] || COLORS.circuit.other;
 }

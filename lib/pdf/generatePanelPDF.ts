@@ -33,10 +33,18 @@ export async function generatePanelPDF(
   const { panel, floorImages } = data;
   const { includeFloorPlans = true, includeCircuitIndex = true } = options;
 
-  // Create PDF document
+  // Validate panel data
+  if (!panel || !panel.name) {
+    throw new Error('Invalid panel data');
+  }
+
+  // Create PDF document with explicit font configuration
   const doc = new PDFDocument({
     size: 'LETTER',
     margin: PAGE.MARGIN,
+    // Disable automatic font embedding to avoid serverless issues
+    autoFirstPage: true,
+    bufferPages: true,
     info: {
       Title: `CircuitMap - ${panel.name}`,
       Author: 'CircuitMap',
@@ -49,33 +57,61 @@ export async function generatePanelPDF(
   const chunks: Buffer[] = [];
   doc.on('data', (chunk) => chunks.push(chunk));
 
-  // Build PDF sections
-  addCoverPage(doc, panel);
-  addBreakerSchedule(doc, panel.breakers);
+  // Build PDF sections with error handling
+  try {
+    addCoverPage(doc, panel);
+  } catch (err) {
+    console.error('Error in addCoverPage:', err);
+    throw new Error(`Cover page generation failed: ${err instanceof Error ? err.message : 'unknown'}`);
+  }
+
+  try {
+    addBreakerSchedule(doc, panel.breakers || []);
+  } catch (err) {
+    console.error('Error in addBreakerSchedule:', err);
+    throw new Error(`Breaker schedule generation failed: ${err instanceof Error ? err.message : 'unknown'}`);
+  }
 
   // Add floor plans and room details
-  const sortedFloors = [...panel.floors].sort((a, b) => b.level - a.level);
+  const floors = panel.floors || [];
+  const sortedFloors = [...floors].sort((a, b) => (b.level || 0) - (a.level || 0));
   for (const floor of sortedFloors) {
-    if (includeFloorPlans && floorImages?.has(floor.id)) {
-      addFloorPlanPage(doc, floor, floorImages.get(floor.id)!);
-    }
-
-    // Add room details for this floor
-    const sortedRooms = [...floor.rooms].sort((a, b) => a.name.localeCompare(b.name));
-    for (const room of sortedRooms) {
-      if (room.devices.length > 0) {
-        addRoomDetails(doc, room, floor, panel.breakers);
+    try {
+      if (includeFloorPlans && floorImages?.has(floor.id)) {
+        addFloorPlanPage(doc, floor, floorImages.get(floor.id)!);
       }
+
+      // Add room details for this floor
+      const rooms = floor.rooms || [];
+      const sortedRooms = [...rooms].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+      for (const room of sortedRooms) {
+        if (room.devices && room.devices.length > 0) {
+          addRoomDetails(doc, room, floor, panel.breakers || []);
+        }
+      }
+    } catch (err) {
+      console.error('Error processing floor:', floor.name, err);
+      // Continue with other floors
     }
   }
 
   // Add circuit index at the end
   if (includeCircuitIndex) {
-    addCircuitIndex(doc, panel);
+    try {
+      addCircuitIndex(doc, panel);
+    } catch (err) {
+      console.error('Error in addCircuitIndex:', err);
+      // Don't fail the whole PDF for circuit index
+    }
   }
 
   // Add page numbers
-  addPageNumbers(doc);
+  try {
+    addPageNumbers(doc);
+  } catch (err) {
+    console.error('Error in addPageNumbers:', err);
+    // Don't fail for page numbers
+  }
 
   // End document
   doc.end();

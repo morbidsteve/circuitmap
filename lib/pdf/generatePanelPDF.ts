@@ -327,22 +327,116 @@ function drawBreakerSlot(
   }
 }
 
-// Device type symbols for schematic view
-const DEVICE_SYMBOLS: Record<string, string> = {
-  outlet: '⊡',
-  light: '☀',
-  switch: '◐',
-  fan: '❋',
-  appliance: '▣',
-  hvac: '❄',
-  water_heater: '♨',
-  dryer: '◎',
-  range: '⬡',
-  ev_charger: '⚡',
-  pool: '≋',
-  smoke_detector: '◉',
-  other: '○',
-};
+// Draw device icon in a circle - uses simple shapes that render in any font
+function drawDeviceIcon(
+  doc: PDFKit.PDFDocument,
+  cx: number,
+  cy: number,
+  radius: number,
+  deviceType: string,
+  bgColor: string
+): void {
+  // Background circle
+  doc.circle(cx, cy, radius).fillColor(bgColor).fill();
+
+  const iconColor = '#FFFFFF';
+  const r = radius * 0.5; // Inner icon size
+
+  switch (deviceType) {
+    case 'outlet':
+      // Two vertical slots like an outlet
+      doc.rect(cx - r * 0.6, cy - r * 0.7, r * 0.4, r * 0.9).fillColor(iconColor).fill();
+      doc.rect(cx + r * 0.2, cy - r * 0.7, r * 0.4, r * 0.9).fillColor(iconColor).fill();
+      break;
+
+    case 'light':
+      // Simple circle (bulb) with rays
+      doc.circle(cx, cy, r * 0.5).fillColor(iconColor).fill();
+      // Rays
+      for (let i = 0; i < 4; i++) {
+        const angle = (i * Math.PI) / 2;
+        const x1 = cx + Math.cos(angle) * r * 0.7;
+        const y1 = cy + Math.sin(angle) * r * 0.7;
+        const x2 = cx + Math.cos(angle) * r;
+        const y2 = cy + Math.sin(angle) * r;
+        doc.moveTo(x1, y1).lineTo(x2, y2).strokeColor(iconColor).lineWidth(1).stroke();
+      }
+      break;
+
+    case 'switch':
+      // Toggle switch shape
+      doc.rect(cx - r * 0.7, cy - r * 0.4, r * 1.4, r * 0.8).fillColor(iconColor).fill();
+      doc.circle(cx + r * 0.3, cy, r * 0.35).fillColor(bgColor).fill();
+      break;
+
+    case 'fan':
+      // Three blade fan
+      doc.circle(cx, cy, r * 0.25).fillColor(iconColor).fill();
+      for (let i = 0; i < 3; i++) {
+        const angle = (i * 2 * Math.PI) / 3 - Math.PI / 2;
+        const x = cx + Math.cos(angle) * r * 0.6;
+        const y = cy + Math.sin(angle) * r * 0.6;
+        doc.circle(x, y, r * 0.3).fillColor(iconColor).fill();
+      }
+      break;
+
+    case 'appliance':
+      // Box with plug prongs
+      doc.rect(cx - r * 0.7, cy - r * 0.5, r * 1.4, r * 1).fillColor(iconColor).fill();
+      doc.rect(cx - r * 0.4, cy + r * 0.5, r * 0.25, r * 0.4).fillColor(iconColor).fill();
+      doc.rect(cx + r * 0.15, cy + r * 0.5, r * 0.25, r * 0.4).fillColor(iconColor).fill();
+      break;
+
+    case 'hvac':
+      // Snowflake-ish shape (simple cross with dots)
+      doc.moveTo(cx - r, cy).lineTo(cx + r, cy).strokeColor(iconColor).lineWidth(1.5).stroke();
+      doc.moveTo(cx, cy - r).lineTo(cx, cy + r).strokeColor(iconColor).lineWidth(1.5).stroke();
+      doc.circle(cx, cy, r * 0.2).fillColor(iconColor).fill();
+      break;
+
+    case 'water_heater':
+      // Tank with wavy line
+      doc.rect(cx - r * 0.6, cy - r * 0.8, r * 1.2, r * 1.6).fillColor(iconColor).fill();
+      doc.moveTo(cx - r * 0.3, cy).lineTo(cx, cy - r * 0.2).lineTo(cx + r * 0.3, cy)
+        .strokeColor(bgColor).lineWidth(1.5).stroke();
+      break;
+
+    case 'dryer':
+    case 'range':
+      // Circle in square (dial/burner)
+      doc.rect(cx - r * 0.8, cy - r * 0.8, r * 1.6, r * 1.6).fillColor(iconColor).fill();
+      doc.circle(cx, cy, r * 0.4).fillColor(bgColor).fill();
+      break;
+
+    case 'ev_charger':
+      // Lightning bolt
+      doc.moveTo(cx + r * 0.2, cy - r).lineTo(cx - r * 0.4, cy + r * 0.1)
+        .lineTo(cx, cy + r * 0.1).lineTo(cx - r * 0.2, cy + r)
+        .lineTo(cx + r * 0.4, cy - r * 0.1).lineTo(cx, cy - r * 0.1)
+        .fillColor(iconColor).fill();
+      break;
+
+    case 'smoke_detector':
+      // Circle with dot
+      doc.circle(cx, cy, r * 0.8).strokeColor(iconColor).lineWidth(1.5).stroke();
+      doc.circle(cx, cy, r * 0.25).fillColor(iconColor).fill();
+      break;
+
+    case 'pool':
+      // Wavy lines
+      for (let i = -1; i <= 1; i++) {
+        const y = cy + i * r * 0.5;
+        doc.moveTo(cx - r, y).bezierCurveTo(cx - r * 0.5, y - r * 0.3, cx + r * 0.5, y + r * 0.3, cx + r, y)
+          .strokeColor(iconColor).lineWidth(1.5).stroke();
+      }
+      break;
+
+    default:
+      // Simple circle for unknown types
+      doc.circle(cx, cy, r * 0.6).fillColor(iconColor).fill();
+      break;
+  }
+}
 
 /**
  * Floor Plan - Schematic Room View
@@ -520,13 +614,8 @@ function addFloorPlanDrawing(doc: PDFKit.PDFDocument, floor: FloorWithRooms, bre
         const breaker = breakerMap.get(device.breakerId || '');
         const circuitColor = breaker ? getCircuitColor(breaker.circuitType || 'general') : COLORS.muted;
 
-        // Device symbol with circuit color background
-        const symbol = DEVICE_SYMBOLS[device.type] || DEVICE_SYMBOLS.other;
-        doc.circle(colX.symbol + 6, deviceY + 6, 7)
-          .fillColor(circuitColor)
-          .fill();
-        doc.fontSize(9).fillColor(COLORS.white)
-          .text(symbol, colX.symbol, deviceY + 1, { width: 14, align: 'center' });
+        // Device icon with circuit color background
+        drawDeviceIcon(doc, colX.symbol + 6, deviceY + 6, 7, device.type, circuitColor);
 
         // Description
         const deviceName = device.description || DEVICE_TYPE_LABELS[device.type] || device.type;
@@ -575,29 +664,29 @@ function addFloorPlanDrawing(doc: PDFKit.PDFDocument, floor: FloorWithRooms, bre
     currentY += 12;
 
     doc.fontSize(FONTS.small).fillColor(COLORS.dark)
-      .text('Device Symbols:', PAGE.MARGIN, currentY);
-    currentY += 14;
+      .text('Device Icons:', PAGE.MARGIN, currentY);
+    currentY += 16;
 
-    // Symbol legend in columns
-    const symbolLegend = [
-      { symbol: '⊡', label: 'Outlet' },
-      { symbol: '☀', label: 'Light' },
-      { symbol: '◐', label: 'Switch' },
-      { symbol: '❋', label: 'Fan' },
-      { symbol: '▣', label: 'Appliance' },
-      { symbol: '❄', label: 'HVAC' },
+    // Icon legend in columns - draw actual icons
+    const iconLegend = [
+      { type: 'outlet', label: 'Outlet' },
+      { type: 'light', label: 'Light' },
+      { type: 'switch', label: 'Switch' },
+      { type: 'fan', label: 'Fan' },
+      { type: 'appliance', label: 'Appliance' },
+      { type: 'hvac', label: 'HVAC' },
     ];
 
     let legendX = PAGE.MARGIN;
-    for (const item of symbolLegend) {
-      doc.fontSize(10).fillColor(COLORS.muted).text(item.symbol, legendX, currentY);
-      doc.fontSize(FONTS.tiny).fillColor(COLORS.secondary).text(item.label, legendX + 14, currentY + 2);
-      legendX += 75;
+    for (const item of iconLegend) {
+      drawDeviceIcon(doc, legendX + 6, currentY + 1, 6, item.type, COLORS.muted);
+      doc.fontSize(FONTS.tiny).fillColor(COLORS.secondary).text(item.label, legendX + 16, currentY - 2);
+      legendX += 80;
     }
 
-    currentY += 18;
+    currentY += 16;
     doc.fontSize(FONTS.tiny).fillColor(COLORS.muted)
-      .text('Symbol colors indicate the circuit type of the connected breaker.', PAGE.MARGIN, currentY);
+      .text('Icon colors indicate the circuit type of the connected breaker.', PAGE.MARGIN, currentY);
   }
 }
 

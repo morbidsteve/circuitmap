@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getAuthenticatedUser } from '@/lib/auth-utils';
 import { prisma } from '@/lib/db';
 import { z } from 'zod';
 
@@ -19,9 +18,9 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await getServerSession(authOptions);
+    const user = await getAuthenticatedUser(request);
 
-    if (!session?.user?.id) {
+    if (!user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -30,7 +29,7 @@ export async function PATCH(
       include: { floor: { include: { panel: true } } },
     });
 
-    if (!room || room.floor.panel.userId !== session.user.id) {
+    if (!room || room.floor.panel.userId !== user.id) {
       return NextResponse.json({ error: 'Room not found' }, { status: 404 });
     }
 
@@ -59,9 +58,9 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await getServerSession(authOptions);
+    const user = await getAuthenticatedUser(request);
 
-    if (!session?.user?.id) {
+    if (!user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -70,7 +69,7 @@ export async function DELETE(
       include: { floor: { include: { panel: true } } },
     });
 
-    if (!room || room.floor.panel.userId !== session.user.id) {
+    if (!room || room.floor.panel.userId !== user.id) {
       return NextResponse.json({ error: 'Room not found' }, { status: 404 });
     }
 

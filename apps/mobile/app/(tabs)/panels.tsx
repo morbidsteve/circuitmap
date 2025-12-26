@@ -9,7 +9,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { router } from 'expo-router';
-import { api } from '../../../lib/api';
+import { api } from '../../lib/api';
 import type { PanelWithRelations } from '@circuitmap/shared';
 
 function PanelCard({ panel }: { panel: PanelWithRelations }) {
@@ -24,7 +24,7 @@ function PanelCard({ panel }: { panel: PanelWithRelations }) {
   return (
     <TouchableOpacity
       style={styles.card}
-      onPress={() => router.push(`/(tabs)/panels/${panel.id}`)}
+      onPress={() => router.push(`/panel/${panel.id}`)}
       activeOpacity={0.7}
     >
       <View style={styles.cardHeader}>

@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getAuthenticatedUser } from '@/lib/auth-utils';
 import { prisma } from '@/lib/db';
 import { generatePanelPDF } from '@/lib/pdf/generatePanelPDF';
 import type { PanelWithRelations } from '@/types/panel';
@@ -28,10 +27,10 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
+    const user = await getAuthenticatedUser(request);
     const { id: panelId } = await params;
 
-    if (!session?.user?.id) {
+    if (!user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -50,7 +49,7 @@ export async function POST(
     const panel = await prisma.panel.findFirst({
       where: {
         id: panelId,
-        userId: session.user.id,
+        userId: user.id,
       },
       include: {
         breakers: true,
@@ -133,10 +132,10 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
+    const user = await getAuthenticatedUser(request);
     const { id: panelId } = await params;
 
-    if (!session?.user?.id) {
+    if (!user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -144,7 +143,7 @@ export async function GET(
     const panel = await prisma.panel.findFirst({
       where: {
         id: panelId,
-        userId: session.user.id,
+        userId: user.id,
       },
       include: {
         breakers: true,

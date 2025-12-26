@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getAuthenticatedUser } from '@/lib/auth-utils';
 import { prisma } from '@/lib/db';
 import { z } from 'zod';
 
@@ -25,9 +24,9 @@ const createBreakerSchema = z.object({
 
 export async function POST(request: Request) {
   try {
-    const session = await getServerSession(authOptions);
+    const user = await getAuthenticatedUser(request);
 
-    if (!session?.user?.id) {
+    if (!user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -40,7 +39,7 @@ export async function POST(request: Request) {
 
     // Verify panel ownership
     const panel = await prisma.panel.findFirst({
-      where: { id: result.data.panelId, userId: session.user.id },
+      where: { id: result.data.panelId, userId: user.id },
     });
 
     if (!panel) {

@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getAuthenticatedUser } from '@/lib/auth-utils';
 import { prisma } from '@/lib/db';
 import { z } from 'zod';
 
@@ -27,9 +26,9 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await getServerSession(authOptions);
+    const user = await getAuthenticatedUser(request);
 
-    if (!session?.user?.id) {
+    if (!user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -39,7 +38,7 @@ export async function PATCH(
       include: { panel: true },
     });
 
-    if (!breaker || breaker.panel.userId !== session.user.id) {
+    if (!breaker || breaker.panel.userId !== user.id) {
       return NextResponse.json({ error: 'Breaker not found' }, { status: 404 });
     }
 
@@ -67,9 +66,9 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await getServerSession(authOptions);
+    const user = await getAuthenticatedUser(request);
 
-    if (!session?.user?.id) {
+    if (!user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -79,7 +78,7 @@ export async function DELETE(
       include: { panel: true },
     });
 
-    if (!breaker || breaker.panel.userId !== session.user.id) {
+    if (!breaker || breaker.panel.userId !== user.id) {
       return NextResponse.json({ error: 'Breaker not found' }, { status: 404 });
     }
 

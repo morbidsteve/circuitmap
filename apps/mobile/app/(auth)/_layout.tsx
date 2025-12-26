@@ -1,4 +1,4 @@
-import { Redirect, Stack } from 'expo-router';
+import { Redirect, Slot } from 'expo-router';
 import { useAuthStore } from '../../lib/auth';
 
 export default function AuthLayout() {
@@ -9,10 +9,6 @@ export default function AuthLayout() {
     return <Redirect href="/(tabs)/panels" />;
   }
 
-  return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="login" />
-      <Stack.Screen name="signup" />
-    </Stack>
-  );
+  // Use Slot instead of Stack to avoid react-native-screens native bridge issues
+  return <Slot />;
 }

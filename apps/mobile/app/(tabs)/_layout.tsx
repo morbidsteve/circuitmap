@@ -1,5 +1,5 @@
 import { Redirect, Tabs } from 'expo-router';
-import { View, Text, StyleSheet } from 'react-native';
+import { Text, StyleSheet } from 'react-native';
 import { useAuthStore } from '../../lib/auth';
 
 // Simple icon components (can be replaced with @expo/vector-icons later)
@@ -38,6 +38,7 @@ export default function TabLayout() {
         tabBarLabelStyle: styles.tabBarLabel,
         headerStyle: styles.header,
         headerTitleStyle: styles.headerTitle,
+        headerShown: true,
       }}
     >
       <Tabs.Screen

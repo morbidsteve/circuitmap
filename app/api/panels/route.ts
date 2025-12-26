@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getAuthenticatedUser } from '@/lib/auth-utils';
 import { prisma } from '@/lib/db';
 import { z } from 'zod';
 import { SUBSCRIPTION_TIERS, SubscriptionTier } from '@/lib/stripe';
@@ -17,13 +16,13 @@ const createPanelSchema = z.object({
   notes: z.string().optional(),
 });
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const session = await getServerSession(authOptions);
+    const user = await getAuthenticatedUser(request);
 
-    // If no session, return empty array (demo page will handle this)
+    // If no user, return empty array (demo page will handle this)
     // In a real app, you might want to return 401
-    const userId = session?.user?.id;
+    const userId = user?.id;
 
     const panels = await prisma.panel.findMany({
       where: userId ? { userId } : undefined,
@@ -60,9 +59,9 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const session = await getServerSession(authOptions);
+    const authUser = await getAuthenticatedUser(request);
 
-    if (!session?.user?.id) {
+    if (!authUser?.id) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -70,17 +69,12 @@ export async function POST(request: Request) {
     }
 
     // Check subscription limits
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { subscriptionTier: true },
-    });
-
-    const tier = (user?.subscriptionTier || 'free') as SubscriptionTier;
+    const tier = (authUser.subscriptionTier || 'free') as SubscriptionTier;
     const tierConfig = SUBSCRIPTION_TIERS[tier];
 
     // Count existing panels
     const panelCount = await prisma.panel.count({
-      where: { userId: session.user.id },
+      where: { userId: authUser.id },
     });
 
     if (panelCount >= tierConfig.maxPanels) {
@@ -107,7 +101,7 @@ export async function POST(request: Request) {
     const panel = await prisma.panel.create({
       data: {
         ...result.data,
-        userId: session.user.id,
+        userId: authUser.id,
       },
       include: {
         breakers: true,

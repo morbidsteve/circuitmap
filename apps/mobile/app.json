@@ -6,7 +6,6 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "scheme": "circuitmap",
     "splash": {
       "image": "./assets/splash-icon.png",
@@ -40,7 +39,8 @@
     "extra": {
       "router": {
         "origin": false
-      }
+      },
+      "apiUrl": "https://circuitmapv1.vercel.app"
     }
   }
 }

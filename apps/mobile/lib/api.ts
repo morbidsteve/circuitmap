@@ -25,8 +25,11 @@ export async function apiFetch<T>(
   // Add auth token if required
   if (requireAuth) {
     const token = useAuthStore.getState().token;
+    console.log('[API] Token available:', !!token, token ? `${token.substring(0, 20)}...` : 'none');
     if (token) {
       (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
+    } else {
+      console.warn('[API] No auth token available for authenticated request to:', endpoint);
     }
   }
 

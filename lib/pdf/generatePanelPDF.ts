@@ -344,22 +344,89 @@ function addFloorPlanDrawing(doc: PDFKit.PDFDocument, floor: FloorWithRooms, bre
   const rooms = floor.rooms || [];
   if (rooms.length === 0) return;
 
-  // Calculate bounds for all rooms
-  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-  for (const room of rooms) {
-    const rx = room.positionX || 0;
-    const ry = room.positionY || 0;
-    const rw = room.width || 10;
-    const rh = room.height || 10;
-    minX = Math.min(minX, rx);
-    minY = Math.min(minY, ry);
-    maxX = Math.max(maxX, rx + rw);
-    maxY = Math.max(maxY, ry + rh);
+  // First, compute layout positions for rooms that don't have them
+  // This mirrors the web app's auto-layout logic
+  const roomLayouts: Array<{
+    room: RoomWithDevices;
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+  }> = [];
+
+  // Check if any rooms have explicit positions
+  const hasPositionedRooms = rooms.some(r =>
+    r.positionX !== null && r.positionX !== undefined &&
+    r.positionY !== null && r.positionY !== undefined
+  );
+
+  if (hasPositionedRooms) {
+    // Use existing positions - calculate bounds
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const room of rooms) {
+      const rx = room.positionX ?? 0;
+      const ry = room.positionY ?? 0;
+      const rw = room.width || 10;
+      const rh = room.height || 10;
+      minX = Math.min(minX, rx);
+      minY = Math.min(minY, ry);
+      maxX = Math.max(maxX, rx + rw);
+      maxY = Math.max(maxY, ry + rh);
+    }
+
+    // Normalize positions relative to min
+    for (const room of rooms) {
+      roomLayouts.push({
+        room,
+        x: (room.positionX ?? 0) - minX,
+        y: (room.positionY ?? 0) - minY,
+        w: room.width || 10,
+        h: room.height || 10,
+      });
+    }
+  } else {
+    // Auto-layout: arrange rooms in a grid pattern
+    const maxRowWidth = 60; // in feet - max width before wrapping
+    let currentX = 0;
+    let currentY = 0;
+    let rowHeight = 0;
+    const gap = 2; // 2 feet gap between rooms
+
+    for (const room of rooms) {
+      const rw = room.width || 10;
+      const rh = room.height || 10;
+
+      // Check if room fits in current row
+      if (currentX > 0 && currentX + rw > maxRowWidth) {
+        // Move to next row
+        currentX = 0;
+        currentY += rowHeight + gap;
+        rowHeight = 0;
+      }
+
+      roomLayouts.push({
+        room,
+        x: currentX,
+        y: currentY,
+        w: rw,
+        h: rh,
+      });
+
+      currentX += rw + gap;
+      rowHeight = Math.max(rowHeight, rh);
+    }
+  }
+
+  // Calculate bounds from layouts
+  let layoutWidth = 0, layoutHeight = 0;
+  for (const layout of roomLayouts) {
+    layoutWidth = Math.max(layoutWidth, layout.x + layout.w);
+    layoutHeight = Math.max(layoutHeight, layout.y + layout.h);
   }
 
   // Scale to fit in available space
-  const floorPlanWidth = Math.max(maxX - minX, 1);
-  const floorPlanHeight = Math.max(maxY - minY, 1);
+  const floorPlanWidth = Math.max(layoutWidth, 1);
+  const floorPlanHeight = Math.max(layoutHeight, 1);
 
   const availableWidth = PAGE.CONTENT_WIDTH - 40;
   const availableHeight = 280;
@@ -369,11 +436,8 @@ function addFloorPlanDrawing(doc: PDFKit.PDFDocument, floor: FloorWithRooms, bre
   const offsetY = PAGE.MARGIN + 60;
 
   // Draw rooms
-  for (const room of rooms) {
-    const rx = (room.positionX || 0) - minX;
-    const ry = (room.positionY || 0) - minY;
-    const rw = room.width || 10;
-    const rh = room.height || 10;
+  for (const layout of roomLayouts) {
+    const { room, x: rx, y: ry, w: rw, h: rh } = layout;
 
     const screenX = offsetX + rx * scale;
     const screenY = offsetY + ry * scale;

@@ -344,6 +344,22 @@ function addFloorPlanDrawing(doc: PDFKit.PDFDocument, floor: FloorWithRooms, bre
   const rooms = floor.rooms || [];
   if (rooms.length === 0) return;
 
+  // Build a map of breaker ID to breaker for quick lookup
+  const breakerMap = new Map<string, Breaker>();
+  for (const b of breakers) {
+    breakerMap.set(b.id, b);
+  }
+
+  // Collect all breakers used on this floor for the legend
+  const floorBreakerIds = new Set<string>();
+  for (const room of rooms) {
+    for (const device of room.devices || []) {
+      if (device.breakerId) {
+        floorBreakerIds.add(device.breakerId);
+      }
+    }
+  }
+
   // First, compute layout positions for rooms that don't have them
   // This mirrors the web app's auto-layout logic
   const roomLayouts: Array<{
@@ -352,6 +368,7 @@ function addFloorPlanDrawing(doc: PDFKit.PDFDocument, floor: FloorWithRooms, bre
     y: number;
     w: number;
     h: number;
+    circuitPositions: string[]; // breaker positions serving this room
   }> = [];
 
   // Check if any rooms have explicit positions
@@ -376,12 +393,28 @@ function addFloorPlanDrawing(doc: PDFKit.PDFDocument, floor: FloorWithRooms, bre
 
     // Normalize positions relative to min
     for (const room of rooms) {
+      // Get unique breaker positions for this room
+      const roomBreakerPositions = new Set<string>();
+      for (const device of room.devices || []) {
+        if (device.breakerId) {
+          const breaker = breakerMap.get(device.breakerId);
+          if (breaker) {
+            roomBreakerPositions.add(breaker.position);
+          }
+        }
+      }
+
       roomLayouts.push({
         room,
         x: (room.positionX ?? 0) - minX,
         y: (room.positionY ?? 0) - minY,
         w: room.width || 10,
         h: room.height || 10,
+        circuitPositions: Array.from(roomBreakerPositions).sort((a, b) => {
+          const numA = parseInt(a.replace(/[^0-9]/g, '')) || 0;
+          const numB = parseInt(b.replace(/[^0-9]/g, '')) || 0;
+          return numA - numB;
+        }),
       });
     }
   } else {
@@ -404,12 +437,28 @@ function addFloorPlanDrawing(doc: PDFKit.PDFDocument, floor: FloorWithRooms, bre
         rowHeight = 0;
       }
 
+      // Get unique breaker positions for this room
+      const roomBreakerPositions = new Set<string>();
+      for (const device of room.devices || []) {
+        if (device.breakerId) {
+          const breaker = breakerMap.get(device.breakerId);
+          if (breaker) {
+            roomBreakerPositions.add(breaker.position);
+          }
+        }
+      }
+
       roomLayouts.push({
         room,
         x: currentX,
         y: currentY,
         w: rw,
         h: rh,
+        circuitPositions: Array.from(roomBreakerPositions).sort((a, b) => {
+          const numA = parseInt(a.replace(/[^0-9]/g, '')) || 0;
+          const numB = parseInt(b.replace(/[^0-9]/g, '')) || 0;
+          return numA - numB;
+        }),
       });
 
       currentX += rw + gap;
@@ -429,7 +478,7 @@ function addFloorPlanDrawing(doc: PDFKit.PDFDocument, floor: FloorWithRooms, bre
   const floorPlanHeight = Math.max(layoutHeight, 1);
 
   const availableWidth = PAGE.CONTENT_WIDTH - 40;
-  const availableHeight = 280;
+  const availableHeight = 250; // Reduced to make room for better legend
   const scale = Math.min(availableWidth / floorPlanWidth, availableHeight / floorPlanHeight, 15);
 
   const offsetX = PAGE.MARGIN + 20 + (availableWidth - floorPlanWidth * scale) / 2;
@@ -437,7 +486,7 @@ function addFloorPlanDrawing(doc: PDFKit.PDFDocument, floor: FloorWithRooms, bre
 
   // Draw rooms
   for (const layout of roomLayouts) {
-    const { room, x: rx, y: ry, w: rw, h: rh } = layout;
+    const { room, x: rx, y: ry, w: rw, h: rh, circuitPositions } = layout;
 
     const screenX = offsetX + rx * scale;
     const screenY = offsetY + ry * scale;
@@ -456,6 +505,19 @@ function addFloorPlanDrawing(doc: PDFKit.PDFDocument, floor: FloorWithRooms, bre
         ellipsis: true
       });
 
+    // Room circuit summary (e.g., "Circuits: 3, 7, 15")
+    if (circuitPositions.length > 0 && screenH > 30) {
+      const circuitText = circuitPositions.length <= 4
+        ? `Circuits: ${circuitPositions.join(', ')}`
+        : `Circuits: ${circuitPositions.slice(0, 3).join(', ')}...`;
+      doc.fontSize(6).fillColor(COLORS.secondary)
+        .text(circuitText, screenX + 4, screenY + 14, {
+          width: screenW - 8,
+          height: 10,
+          ellipsis: true
+        });
+    }
+
     // Draw devices in room
     const devices = room.devices || [];
     for (const device of devices) {
@@ -465,38 +527,79 @@ function addFloorPlanDrawing(doc: PDFKit.PDFDocument, floor: FloorWithRooms, bre
       const deviceX = screenX + (dx / rw) * screenW;
       const deviceY = screenY + (dy / rh) * screenH;
 
-      // Get breaker for color
-      const breaker = breakers.find(b => b.id === device.breakerId);
+      // Get breaker for color and label
+      const breaker = breakerMap.get(device.breakerId || '');
       const deviceColor = breaker ? getCircuitColor(breaker.circuitType || 'general') : COLORS.muted;
 
       // Draw device marker
       doc.circle(deviceX, deviceY, 4).fillColor(deviceColor).fill();
       doc.circle(deviceX, deviceY, 4).strokeColor(COLORS.dark).lineWidth(0.5).stroke();
+
+      // Add breaker number label next to device (e.g., "B3")
+      if (breaker) {
+        const breakerLabel = `B${breaker.position}`;
+        doc.fontSize(5).fillColor(COLORS.dark)
+          .text(breakerLabel, deviceX + 5, deviceY - 3, { width: 20 });
+      }
     }
   }
 
-  // Device legend
-  const legendY = offsetY + availableHeight + 20;
-  doc.fontSize(FONTS.small).fillColor(COLORS.dark).text('Devices by Circuit Type:', PAGE.MARGIN, legendY);
+  // Enhanced legend showing actual breakers on this floor
+  const legendY = offsetY + availableHeight + 15;
+  doc.fontSize(FONTS.small).fillColor(COLORS.dark).text('Breakers on this floor:', PAGE.MARGIN, legendY);
 
-  const legendItems = [
-    { color: COLORS.circuit.general, label: 'General' },
-    { color: COLORS.circuit.lighting, label: 'Lighting' },
-    { color: COLORS.circuit.kitchen, label: 'Kitchen' },
-    { color: COLORS.circuit.appliance, label: 'Appliance' },
-    { color: COLORS.muted, label: 'Unassigned' },
-  ];
+  // Get breakers used on this floor, sorted by position
+  const floorBreakers = Array.from(floorBreakerIds)
+    .map(id => breakerMap.get(id))
+    .filter((b): b is Breaker => b !== undefined)
+    .sort((a, b) => {
+      const numA = parseInt(a.position.replace(/[^0-9]/g, '')) || 0;
+      const numB = parseInt(b.position.replace(/[^0-9]/g, '')) || 0;
+      return numA - numB;
+    });
 
   let legendX = PAGE.MARGIN;
-  const legendRowY = legendY + 16;
-  for (const item of legendItems) {
-    doc.circle(legendX + 5, legendRowY + 5, 4).fillColor(item.color).fill();
-    doc.fontSize(FONTS.tiny).fillColor(COLORS.dark).text(item.label, legendX + 12, legendRowY + 1);
-    legendX += 85;
+  let legendRowY = legendY + 14;
+  const legendColWidth = PAGE.CONTENT_WIDTH / 3;
+
+  if (floorBreakers.length === 0) {
+    doc.fontSize(FONTS.tiny).fillColor(COLORS.muted)
+      .text('No devices assigned to breakers', legendX, legendRowY);
+    legendRowY += 14;
+  } else {
+    let colIndex = 0;
+    for (const breaker of floorBreakers) {
+      const color = getCircuitColor(breaker.circuitType || 'general');
+      const x = PAGE.MARGIN + (colIndex % 3) * legendColWidth;
+      const y = legendRowY + Math.floor(colIndex / 3) * 12;
+
+      // Check if we need to wrap to a new set of rows
+      if (y > legendY + 60) break; // Limit legend height
+
+      doc.circle(x + 4, y + 4, 3).fillColor(color).fill();
+
+      const label = breaker.label
+        ? `B${breaker.position} - ${breaker.label.substring(0, 18)}${breaker.label.length > 18 ? '...' : ''}`
+        : `B${breaker.position} (${breaker.amperage}A)`;
+      doc.fontSize(FONTS.tiny).fillColor(COLORS.dark)
+        .text(label, x + 10, y, { width: legendColWidth - 15, ellipsis: true });
+
+      colIndex++;
+    }
+    legendRowY += Math.ceil(Math.min(floorBreakers.length, 9) / 3) * 12 + 8;
+  }
+
+  // Add unassigned indicator if any devices are unassigned
+  const hasUnassigned = rooms.some(r => (r.devices || []).some(d => !d.breakerId));
+  if (hasUnassigned) {
+    doc.circle(PAGE.MARGIN + 4, legendRowY + 4, 3).fillColor(COLORS.muted).fill();
+    doc.fontSize(FONTS.tiny).fillColor(COLORS.dark)
+      .text('Unassigned devices', PAGE.MARGIN + 10, legendRowY);
+    legendRowY += 14;
   }
 
   // Room details table below floor plan
-  const tableY = legendRowY + 30;
+  const tableY = legendRowY + 10;
   doc.fontSize(FONTS.heading2).fillColor(COLORS.dark).text('Room Details', PAGE.MARGIN, tableY);
 
   let currentY = tableY + 20;
@@ -511,32 +614,44 @@ function addFloorPlanDrawing(doc: PDFKit.PDFDocument, floor: FloorWithRooms, bre
       currentY = PAGE.MARGIN;
     }
 
-    // Room header
+    // Room header with circuit summary
     const totalWattage = devices.reduce((sum, d) => sum + (d.estimatedWattage || 0), 0);
+    const roomBreakerPositions = new Set<string>();
+    for (const device of devices) {
+      if (device.breakerId) {
+        const breaker = breakerMap.get(device.breakerId);
+        if (breaker) roomBreakerPositions.add(breaker.position);
+      }
+    }
+    const circuitSummary = roomBreakerPositions.size > 0
+      ? `Circuits: ${Array.from(roomBreakerPositions).sort((a, b) => parseInt(a) - parseInt(b)).join(', ')}`
+      : 'No circuits assigned';
+
     doc.fontSize(FONTS.body).fillColor(COLORS.dark)
       .text(`${room.name}`, PAGE.MARGIN, currentY);
     doc.fontSize(FONTS.tiny).fillColor(COLORS.secondary)
-      .text(`${devices.length} devices | ${totalWattage}W estimated`, PAGE.MARGIN + 150, currentY + 1);
+      .text(`${devices.length} devices | ${totalWattage}W | ${circuitSummary}`, PAGE.MARGIN + 120, currentY + 1);
 
     currentY += 16;
 
     // Device list
     for (const device of devices) {
-      const breaker = breakers.find(b => b.id === device.breakerId);
+      const breaker = breakerMap.get(device.breakerId || '');
       const circuitColor = breaker ? getCircuitColor(breaker.circuitType || 'general') : COLORS.muted;
 
       doc.circle(PAGE.MARGIN + 5, currentY + 4, 3).fillColor(circuitColor).fill();
 
       const deviceName = device.description || DEVICE_TYPE_LABELS[device.type] || device.type;
-      const breakerInfo = breaker ? `#${breaker.position} ${breaker.amperage}A` : 'Unassigned';
+      const breakerInfo = breaker ? `B${breaker.position} (${breaker.amperage}A)` : 'Unassigned';
 
       doc.fontSize(FONTS.tiny).fillColor(COLORS.dark)
-        .text(deviceName, PAGE.MARGIN + 14, currentY, { width: 180, ellipsis: true });
-      doc.text(DEVICE_TYPE_LABELS[device.type] || device.type, PAGE.MARGIN + 200, currentY);
-      doc.text(breakerInfo, PAGE.MARGIN + 280, currentY);
+        .text(deviceName, PAGE.MARGIN + 14, currentY, { width: 150, ellipsis: true });
+      doc.text(DEVICE_TYPE_LABELS[device.type] || device.type, PAGE.MARGIN + 170, currentY);
+      doc.fillColor(breaker ? COLORS.dark : COLORS.muted)
+        .text(breakerInfo, PAGE.MARGIN + 260, currentY);
 
       if (device.heightFromFloor) {
-        doc.text(`${device.heightFromFloor}"`, PAGE.MARGIN + 360, currentY);
+        doc.fillColor(COLORS.dark).text(`${device.heightFromFloor}"`, PAGE.MARGIN + 360, currentY);
       }
 
       currentY += 14;

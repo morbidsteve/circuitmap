@@ -439,8 +439,8 @@ function drawDeviceIcon(
 }
 
 /**
- * Floor Plan - Schematic Room View
- * Shows a clear, readable room-by-room breakdown with device listings
+ * Floor Plan - Combined Spatial + Schematic View
+ * Shows spatial layout of rooms with device positions, plus detailed device list
  */
 function addFloorPlanDrawing(doc: PDFKit.PDFDocument, floor: FloorWithRooms, breakers: Breaker[]): void {
   doc.addPage();
@@ -466,17 +466,160 @@ function addFloorPlanDrawing(doc: PDFKit.PDFDocument, floor: FloorWithRooms, bre
     breakerMap.set(b.id, b);
   }
 
-  // Collect all breakers used on this floor
-  const floorBreakerIds = new Set<string>();
-  for (const room of rooms) {
-    for (const device of room.devices || []) {
-      if (device.breakerId) {
-        floorBreakerIds.add(device.breakerId);
+  // ========== SPATIAL FLOOR PLAN VIEW ==========
+  let currentY = PAGE.MARGIN + 45;
+
+  // Compute room layout positions
+  const roomLayouts: Array<{
+    room: RoomWithDevices;
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+  }> = [];
+
+  // Check if rooms have explicit positions
+  const hasPositionedRooms = rooms.some(r =>
+    r.positionX !== null && r.positionX !== undefined &&
+    r.positionY !== null && r.positionY !== undefined
+  );
+
+  if (hasPositionedRooms) {
+    // Use existing positions - calculate bounds
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const room of rooms) {
+      const rx = room.positionX ?? 0;
+      const ry = room.positionY ?? 0;
+      const rw = room.width || 12;
+      const rh = room.height || 10;
+      minX = Math.min(minX, rx);
+      minY = Math.min(minY, ry);
+      maxX = Math.max(maxX, rx + rw);
+      maxY = Math.max(maxY, ry + rh);
+    }
+
+    for (const room of rooms) {
+      roomLayouts.push({
+        room,
+        x: (room.positionX ?? 0) - minX,
+        y: (room.positionY ?? 0) - minY,
+        w: room.width || 12,
+        h: room.height || 10,
+      });
+    }
+  } else {
+    // Auto-layout in grid
+    const maxRowWidth = 50;
+    let layoutX = 0, layoutY = 0, rowHeight = 0;
+    const gap = 2;
+
+    for (const room of rooms) {
+      const rw = room.width || 12;
+      const rh = room.height || 10;
+
+      if (layoutX > 0 && layoutX + rw > maxRowWidth) {
+        layoutX = 0;
+        layoutY += rowHeight + gap;
+        rowHeight = 0;
       }
+
+      roomLayouts.push({ room, x: layoutX, y: layoutY, w: rw, h: rh });
+      layoutX += rw + gap;
+      rowHeight = Math.max(rowHeight, rh);
     }
   }
 
-  // Get breakers used on this floor, sorted by position
+  // Calculate bounds
+  let layoutWidth = 0, layoutHeight = 0;
+  for (const layout of roomLayouts) {
+    layoutWidth = Math.max(layoutWidth, layout.x + layout.w);
+    layoutHeight = Math.max(layoutHeight, layout.y + layout.h);
+  }
+
+  // Scale to fit available space
+  const availableWidth = PAGE.CONTENT_WIDTH;
+  const availableHeight = 280;
+  const scale = Math.min(
+    availableWidth / Math.max(layoutWidth, 1),
+    availableHeight / Math.max(layoutHeight, 1),
+    12
+  );
+
+  const floorPlanX = PAGE.MARGIN + (availableWidth - layoutWidth * scale) / 2;
+  const floorPlanY = currentY;
+
+  // Draw rooms with devices
+  for (const layout of roomLayouts) {
+    const { room, x: rx, y: ry, w: rw, h: rh } = layout;
+
+    const screenX = floorPlanX + rx * scale;
+    const screenY = floorPlanY + ry * scale;
+    const screenW = rw * scale;
+    const screenH = rh * scale;
+
+    // Room background
+    doc.rect(screenX, screenY, screenW, screenH).fillColor('#F8FAFC').fill();
+    doc.rect(screenX, screenY, screenW, screenH).strokeColor('#64748B').lineWidth(1).stroke();
+
+    // Room name (centered at top)
+    const roomName = room.name || 'Room';
+    const fontSize = Math.min(9, screenW / (roomName.length * 0.6));
+    doc.fontSize(fontSize).fillColor(COLORS.dark)
+      .text(roomName, screenX + 2, screenY + 2, {
+        width: screenW - 4,
+        height: 12,
+        ellipsis: true,
+        align: 'center'
+      });
+
+    // Draw devices positioned within room
+    const devices = room.devices || [];
+    for (const device of devices) {
+      // Calculate device position within room
+      // Default to center if no position specified
+      const dx = device.positionX ?? (rw / 2);
+      const dy = device.positionY ?? (rh / 2);
+
+      // Clamp to room bounds with padding
+      const clampedX = Math.max(1, Math.min(rw - 1, dx));
+      const clampedY = Math.max(2, Math.min(rh - 1, dy)); // Extra top padding for room name
+
+      const deviceScreenX = screenX + (clampedX / rw) * screenW;
+      const deviceScreenY = screenY + (clampedY / rh) * screenH;
+
+      // Get breaker for color
+      const breaker = breakerMap.get(device.breakerId || '');
+      const circuitColor = breaker ? getCircuitColor(breaker.circuitType || 'general') : COLORS.muted;
+
+      // Draw device icon
+      const iconRadius = Math.min(6, scale * 0.4);
+      drawDeviceIcon(doc, deviceScreenX, deviceScreenY, iconRadius, device.type, circuitColor);
+
+      // Add breaker label if room is large enough
+      if (breaker && screenW > 50) {
+        doc.fontSize(5).fillColor(COLORS.dark)
+          .text(`#${breaker.position}`, deviceScreenX + iconRadius + 1, deviceScreenY - 3, { width: 20 });
+      }
+    }
+
+    // Show room dimensions if large enough
+    if (screenW > 60 && screenH > 40) {
+      const dimText = `${rw}'×${rh}'`;
+      doc.fontSize(6).fillColor(COLORS.muted)
+        .text(dimText, screenX + 2, screenY + screenH - 10, { width: screenW - 4 });
+    }
+  }
+
+  currentY = floorPlanY + layoutHeight * scale + 20;
+
+  // Breaker legend for this floor
+  const floorBreakerIds = new Set<string>();
+  for (const room of rooms) {
+    for (const device of room.devices || []) {
+      if (device.breakerId) floorBreakerIds.add(device.breakerId);
+    }
+  }
+
   const floorBreakers = Array.from(floorBreakerIds)
     .map(id => breakerMap.get(id))
     .filter((b): b is Breaker => b !== undefined)
@@ -486,37 +629,33 @@ function addFloorPlanDrawing(doc: PDFKit.PDFDocument, floor: FloorWithRooms, bre
       return numA - numB;
     });
 
-  // Breaker summary at top
-  let currentY = PAGE.MARGIN + 45;
-
   if (floorBreakers.length > 0) {
-    doc.fontSize(FONTS.small).fillColor(COLORS.dark)
-      .text('Breakers serving this floor:', PAGE.MARGIN, currentY);
-    currentY += 14;
+    doc.fontSize(FONTS.tiny).fillColor(COLORS.dark)
+      .text('Breakers:', PAGE.MARGIN, currentY);
 
-    // Show breakers in a compact format
-    const breakerSummaries: string[] = [];
-    for (const breaker of floorBreakers) {
-      const label = breaker.label ? breaker.label : `${breaker.amperage}A`;
-      breakerSummaries.push(`#${breaker.position} ${label}`);
+    let legendX = PAGE.MARGIN + 50;
+    for (const breaker of floorBreakers.slice(0, 8)) { // Limit to 8 for space
+      const color = getCircuitColor(breaker.circuitType || 'general');
+      doc.circle(legendX, currentY + 4, 4).fillColor(color).fill();
+      const label = `#${breaker.position}`;
+      doc.fontSize(6).fillColor(COLORS.dark).text(label, legendX + 6, currentY + 1);
+      legendX += 35 + label.length * 3;
     }
-
-    // Wrap breaker list
-    const breakerText = breakerSummaries.join('  ·  ');
-    doc.fontSize(FONTS.tiny).fillColor(COLORS.secondary)
-      .text(breakerText, PAGE.MARGIN, currentY, { width: PAGE.CONTENT_WIDTH });
-    currentY += doc.heightOfString(breakerText, { width: PAGE.CONTENT_WIDTH }) + 15;
-  } else {
-    currentY += 10;
+    currentY += 18;
   }
 
-  // Draw horizontal divider
+  // Divider before device details
   doc.moveTo(PAGE.MARGIN, currentY)
     .lineTo(PAGE.WIDTH - PAGE.MARGIN, currentY)
     .strokeColor(COLORS.muted)
     .lineWidth(0.5)
     .stroke();
-  currentY += 15;
+  currentY += 12;
+
+  // ========== DEVICE DETAILS SECTION ==========
+  doc.fontSize(FONTS.heading2).fillColor(COLORS.dark)
+    .text('Device Details', PAGE.MARGIN, currentY);
+  currentY += 18;
 
   // Room-by-room schematic view
   for (const room of rooms) {
